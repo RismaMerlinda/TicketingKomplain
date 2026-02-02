@@ -33,7 +33,16 @@ const FloatingSnippet = ({ delay, x, y, text }: { delay: number, x: string, y: s
 );
 
 // Glowing Orb - adds depth without dizziness
-const GlowingOrb = ({ size, color, duration, delay, x, y }: any) => (
+interface GlowingOrbProps {
+  size: string;
+  color: string;
+  duration: number;
+  delay: number;
+  x: string;
+  y: string;
+}
+
+const GlowingOrb = ({ size, color, duration, delay, x, y }: GlowingOrbProps) => (
   <motion.div
     animate={{
       scale: [1, 1.2, 1],
@@ -84,8 +93,8 @@ const Stickman = ({ state }: { state: 'run' | 'stop' | 'look' | 'baa' }) => {
       {/* Body & Limbs */}
       <motion.path
         initial={{ d: variants.run.d[0] }}
-        animate={{ d: (variants[state] as any).d }}
-        transition={(variants[state] as any).transition}
+        animate={{ d: (variants[state] as { d: string | string[] }).d }}
+        transition={(variants[state] as { transition: object }).transition}
       />
 
       {/* Face Expressions */}
@@ -120,7 +129,7 @@ const MascotLoader = ({ progress }: { progress: number }) => {
   else stickmanState = 'run';
 
   return (
-    <div className="relative w-full h-8 bg-neutral-200/50 rounded-full border border-white/50 backdrop-blur-md shadow-inner overflow-visible mt-12">
+    <div className="relative w-full h-8 bg-white/10 rounded-full border border-white/20 backdrop-blur-md shadow-inner overflow-visible mt-12">
       {/* Fill */}
       <motion.div
         className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-primary rounded-full"
@@ -150,7 +159,7 @@ const MascotLoader = ({ progress }: { progress: number }) => {
                 initial={{ scale: 0, rotate: -20 }}
                 animate={{ scale: 1.5, rotate: 10 }}
                 exit={{ scale: 0 }}
-                className="absolute -top-12 whitespace-nowrap bg-yellow-400 text-black font-black px-2 py-1 rounded border-2 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] z-30"
+                className="absolute -top-12 whitespace-nowrap bg-status-warning text-black font-black px-2 py-1 rounded border-2 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] z-30"
               >
                 BAAA!!! 🤪
               </motion.div>
@@ -189,7 +198,10 @@ export default function LandingPage() {
   const [sessionId, setSessionId] = useState("---");
 
   useEffect(() => {
-    setSessionId(Math.random().toString(36).substring(7).toUpperCase());
+    // Defer state update to avoid synchronous render warning
+    const idTimer = setTimeout(() => {
+      setSessionId(Math.random().toString(36).substring(7).toUpperCase());
+    }, 0);
 
     // Custom Progress Logic
     let currentProgress = 0;
@@ -221,16 +233,17 @@ export default function LandingPage() {
     ];
 
     return () => {
+      clearTimeout(idTimer);
       timers.forEach(clearTimeout);
       clearInterval(interval);
     };
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center relative overflow-hidden font-sans selection:bg-primary/20">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden font-sans selection:bg-primary/20 text-white">
 
       {/* 1. LAYER: ELEGANT GRADIENT BACKGROUND (Not dizzying) */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0E1F4D] to-[#1B3A8A] pointer-events-none" />
       <div className="absolute inset-0 bg-[linear-gradient(#e5e7eb_1px,transparent_1px)] [background-size:40px_40px] opacity-20" />
 
       {/* 2. LAYER: BEAUTIFUL FLOATING ORBS (Ambient) */}
@@ -266,7 +279,7 @@ export default function LandingPage() {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           className="z-20 w-full max-w-xl p-4"
         >
-          <div className="bg-white/70 backdrop-blur-xl p-10 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-white/60 relative overflow-hidden ring-1 ring-white/80">
+          <div className="bg-[#162B63]/70 backdrop-blur-xl p-10 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-white/10 relative overflow-hidden ring-1 ring-white/10">
 
             {/* Top Decor */}
             <div className="flex justify-center mb-8">

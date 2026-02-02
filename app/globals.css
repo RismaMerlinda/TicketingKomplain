@@ -1,67 +1,99 @@
 @import "tailwindcss";
 
-:root {
-  /* DIRAYA TECH PALETTE */
-  /* Primary */
-  --pk-primary-500: #0E29DA; /* Main Brand */
-  --pk-primary-600: #0B22B8; /* Hover */
-  --pk-primary-700: #081A8F; /* Active */
-
-  /* Accent */
-  --pk-accent-glow: #4C6BFF;
-  --pk-accent-soft: #E8EDFF;
-
-  /* Neutral */
-  --pk-white: #FFFFFF;
-  --pk-gray-light: #F2F3F5;
-  --pk-border-soft: #E5E7EB;
-
-  /* Text */
-  --pk-text-heading: #000000;
-  --pk-text-dark: #1A1F2B;
-  --pk-text-body: #6B7280;
-  --pk-text-muted: #9CA3AF;
-
-  /* Status */
-  --pk-status-success: #22C55E;
-  --pk-status-warning: #F59E0B;
-  --pk-status-error: #EF4444;
-  --pk-status-info: #3B82F6;
-
-  --background: var(--pk-gray-light);
-  --foreground: var(--pk-text-dark);
-}
+/* 
+  TECH / IT SASS THEME
+  - Background: Dot/Grid Pattern (Subtle)
+  - Color: Sky Blue / Electric Blue
+  - Typography: Inter + Mono for data
+*/
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  
-  --color-primary: var(--pk-primary-500);
-  --color-primary-hover: var(--pk-primary-600);
-  --color-primary-active: var(--pk-primary-700);
 
-  --color-accent-glow: var(--pk-accent-glow);
-  --color-accent-soft: var(--pk-accent-soft);
+  /* Tech Blue */
+  --color-primary: #0ea5e9;
+  /* Sky 500 */
+  --color-primary-foreground: #ffffff;
 
-  --color-neutral-white: var(--pk-white);
-  --color-neutral-light: var(--pk-gray-light);
-  --color-neutral-border: var(--pk-border-soft);
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
 
-  --color-text-heading: var(--pk-text-heading);
-  --color-text-main: var(--pk-text-dark);
-  --color-text-body: var(--pk-text-body);
-  --color-text-muted: var(--pk-text-muted);
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
 
-  --color-status-success: var(--pk-status-success);
-  --color-status-warning: var(--pk-status-warning);
-  --color-status-error: var(--pk-status-error);
-  --color-status-info: var(--pk-status-info);
+  --color-border: #e2e8f0;
+
+  /* Status Colors (Clear & Bright) */
+  --color-status-success: #10b981;
+  --color-status-warning: #f59e0b;
+  --color-status-error: #ef4444;
+  --color-status-info: #0ea5e9;
+}
+
+:root {
+  /* --- CLEAN PROFESSIONAL LIGHT THEME --- */
+
+  /* Primary Backgrounds */
+  --pk-bg-main: #F8FAFC;
+  /* Slate 50 */
+  --pk-bg-panel: #FFFFFF;
+  --pk-bg-header: #FFFFFF;
+
+  /* Accents (Deep Blue) */
+  --pk-accent-main: #1500FF;
+  --pk-accent-bright: #00E5FF;
+  --pk-accent-soft: #4FC3F7;
+
+  /* Text */
+  --pk-text-heading: #0F172A;
+  /* Slate 900 */
+  --pk-text-main: #334155;
+  /* Slate 700 */
+  --pk-text-muted: #64748B;
+  /* Slate 500 */
+
+  --background: var(--pk-bg-main);
+  --foreground: var(--pk-text-main);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+
+  /* Subtle Clean Grid Pattern */
+  background-image:
+    linear-gradient(to right, rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Data / Code Fonts */
+code,
+.font-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Roboto Mono', monospace;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
