@@ -72,6 +72,9 @@ export default function LandingPage() {
       if (currentProgress >= 100) {
         setIsReady(true);
         clearInterval(timer);
+        setTimeout(() => {
+          router.push("/AdminOrbit/dashboard");
+        }, 1000);
       }
     }, 70);
 
