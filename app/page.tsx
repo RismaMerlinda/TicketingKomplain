@@ -1,316 +1,219 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Bot, Rocket, Sparkles, Code2, Database,
-  Cpu, Layers, Box, Terminal, Wifi
-} from "lucide-react";
+import { Ticket, LayoutDashboard, BarChart3, ShieldCheck, CheckCircle2 } from "lucide-react";
 
-// --- Sophisticated Background Elements ---
+// --- Components ---
 
-// Floating Code Snippet - elegant and slow
-const FloatingSnippet = ({ delay, x, y, text }: { delay: number, x: string, y: string, text: string }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 50 }}
-    animate={{
-      opacity: [0, 0.4, 0],
-      y: -100,
-    }}
-    transition={{
-      duration: 8,
-      repeat: Infinity,
-      delay: delay,
-      ease: "easeInOut"
-    }}
-    className="absolute text-[10px] font-mono text-primary/30 pointer-events-none backdrop-blur-sm bg-white/20 px-2 py-1 rounded-md border border-white/10"
-    style={{ left: x, top: y }}
-  >
-    {text}
-  </motion.div>
+const TechBackground = () => (
+  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <div className="absolute inset-0 bg-blue-900" />
+    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:50px_50px] opacity-30" />
+    <div className="absolute inset-0 bg-gradient-to-t from-blue-950 via-transparent to-blue-900 opacity-80" />
+  </div>
 );
 
-// Glowing Orb - adds depth without dizziness
-const GlowingOrb = ({ size, color, duration, delay, x, y }: any) => (
-  <motion.div
-    animate={{
-      scale: [1, 1.2, 1],
-      opacity: [0.3, 0.6, 0.3],
-      boxShadow: [`0 0 20px ${color}`, `0 0 60px ${color}`, `0 0 20px ${color}`]
-    }}
-    transition={{ duration: duration, repeat: Infinity, delay: delay }}
-    className="absolute rounded-full pointer-events-none blur-xl"
-    style={{ width: size, height: size, backgroundColor: color, left: x, top: y }}
-  />
-);
-
-// --- The Mascot Loader Component ---
-
-const Stickman = ({ state }: { state: 'run' | 'stop' | 'look' | 'baa' }) => {
-  // SVG Paths for different states
-  const variants = {
-    run: {
-      d: [
-        "M12 8 L12 16 M12 16 L8 21 M12 16 L16 21 M12 11 L6 14 M12 11 L18 8", // Frame 1
-        "M12 8 L12 16 M12 16 L9 20 M12 16 L15 20 M12 11 L8 13 M12 11 L16 13", // Neutral
-        "M12 8 L12 16 M12 16 L16 21 M12 16 L8 21 M12 11 L18 14 M12 11 L6 8"  // Frame 2
-      ],
-      transition: { duration: 0.2, repeat: Infinity, ease: "linear" }
-    },
-    stop: {
-      d: "M12 8 L12 16 M12 16 L10 21 M12 16 L14 21 M12 11 L8 10 M12 11 L16 10", // Skid
-      transition: { duration: 0.3 }
-    },
-    look: {
-      d: "M12 8 L12 16 M12 16 L12 21 M12 16 L12 21 M12 11 L12 14 M12 11 L12 14", // Turning back (simplified)
-      transition: { duration: 0.3 }
-    },
-    baa: {
-      d: "M12 8 L12 16 M12 16 L8 22 M12 16 L16 22 M12 11 L4 6 M12 11 L20 6", // Arms WAY up
-      transition: { type: "spring", stiffness: 500 }
-    }
-  };
-
-  return (
-    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary drop-shadow-md">
-      {/* Head */}
-      <motion.circle
-        cx="12" cy="5" r="3"
-        animate={state === 'baa' ? { r: 4, fill: "#fff" } : { r: 3 }}
-      />
-
-      {/* Body & Limbs */}
-      <motion.path
-        initial={{ d: variants.run.d[0] }}
-        animate={{ d: (variants[state] as any).d }}
-        transition={(variants[state] as any).transition}
-      />
-
-      {/* Face Expressions */}
-      <AnimatePresence>
-        {state === 'look' && (
-          <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            {/* Question Mark */}
-            <text x="16" y="6" fontSize="8" fill="currentColor">?</text>
-          </motion.g>
-        )}
-        {state === 'baa' && (
-          <motion.g initial={{ scale: 0 }} animate={{ scale: 1 }}>
-            {/* Shocked Eyes */}
-            <circle cx="11" cy="4.5" r="0.5" fill="black" />
-            <circle cx="13" cy="4.5" r="0.5" fill="black" />
-            {/* Mouth */}
-            <circle cx="12" cy="6.5" r="1" fill="black" />
-          </motion.g>
-        )}
-      </AnimatePresence>
-    </svg>
-  );
-};
-
-const MascotLoader = ({ progress }: { progress: number }) => {
-  // Determine precise state
-  let stickmanState: 'run' | 'stop' | 'look' | 'baa' = 'run';
-
-  if (progress >= 45 && progress < 48) stickmanState = 'stop';
-  else if (progress >= 48 && progress < 52) stickmanState = 'look';
-  else if (progress >= 52 && progress < 55) stickmanState = 'baa';
-  else stickmanState = 'run';
-
-  return (
-    <div className="relative w-full h-8 bg-neutral-200/50 rounded-full border border-white/50 backdrop-blur-md shadow-inner overflow-visible mt-12">
-      {/* Fill */}
-      <motion.div
-        className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-primary rounded-full"
-        style={{ width: `${progress}%` }}
-      >
+const SystemLog = ({ logs }: { logs: string[] }) => (
+  <div className="h-40 w-full bg-blue-950/50 rounded-lg border border-blue-400/30 p-4 font-mono text-xs text-blue-200 overflow-hidden relative shadow-inner">
+    <div className="flex flex-col h-full space-y-2 overflow-y-auto scrollbar-hide">
+      {logs.map((log, i) => (
         <motion.div
-          className="absolute inset-0 bg-white/20"
-          animate={{ x: ["-100%", "100%"] }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-        />
-      </motion.div>
-
-      {/* The Stickman Actor */}
-      <motion.div
-        className="absolute bottom-6 -ml-6 z-20"
-        style={{ left: `${progress}%` }}
-        animate={{
-          y: stickmanState === 'run' ? [0, -4, 0] : 0,
-        }}
-        transition={{ duration: 0.15, repeat: Infinity }}
-      >
-        <div className="relative flex flex-col items-center">
-          {/* Dramatic "BAAA!" Text */}
-          <AnimatePresence>
-            {stickmanState === 'baa' && (
-              <motion.div
-                initial={{ scale: 0, rotate: -20 }}
-                animate={{ scale: 1.5, rotate: 10 }}
-                exit={{ scale: 0 }}
-                className="absolute -top-12 whitespace-nowrap bg-yellow-400 text-black font-black px-2 py-1 rounded border-2 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] z-30"
-              >
-                BAAA!!! 🤪
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Question Mark for 'Loop' */}
-          <AnimatePresence>
-            {stickmanState === 'look' && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: -20 }}
-                exit={{ opacity: 0 }}
-                className="absolute -top-8 text-2xl font-bold text-primary"
-              >
-                ?
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* The SVG Actor */}
-          <Stickman state={stickmanState} />
-
-          {/* Shadow */}
-          <div className="w-8 h-1 bg-black/20 rounded-full blur-[1px]" />
-        </div>
-      </motion.div>
+          key={i}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="flex items-start gap-2 shrink-0"
+        >
+          <span className="text-blue-500 opacity-70 whitespace-nowrap">[{new Date().toLocaleTimeString('en-US', { hour12: false })}]</span>
+          <span className="font-semibold text-blue-100">{'>'} {log}</span>
+        </motion.div>
+      ))}
     </div>
-  );
-};
+  </div>
+);
 
 export default function LandingPage() {
   const router = useRouter();
-  const [loadingStep, setLoadingStep] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [sessionId, setSessionId] = useState("---");
+  const [logs, setLogs] = useState<string[]>([]);
+
+  const logSequence = [
+    "Initializing Admin Ticketing System...",
+    "Loading Product Data (Catatmark, Joki Informatika, Orbit Billiard)...",
+    "Syncing Ticket Workflow & Status Rules...",
+    "Validating SLA & Deadline Configuration...",
+    "Connecting to Ticket Database...",
+    "Applying Admin Access Control...",
+    "System Ready. Redirecting to Dashboard..."
+  ];
+
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    setSessionId(Math.random().toString(36).substring(7).toUpperCase());
-
-    // Custom Progress Logic
+    setProgress(0);
     let currentProgress = 0;
-    const interval = setInterval(() => {
+    const stepRate = 1.6;
+
+    const timer = setInterval(() => {
+      currentProgress += stepRate;
+      const displayProgress = Math.min(currentProgress, 100);
+      setProgress(displayProgress);
+
+      const logIdx = Math.floor((displayProgress / 100) * logSequence.length);
+      if (logIdx < logSequence.length) {
+        setLogs(prev => {
+          if (prev.includes(logSequence[logIdx])) return prev;
+          return [...prev, logSequence[logIdx]];
+        });
+      }
+
       if (currentProgress >= 100) {
-        clearInterval(interval);
-        return;
+        setIsReady(true);
+        clearInterval(timer);
       }
+    }, 70);
 
-      // Logic: Run normal -> Stop at 50% -> Wait -> Dash to 100%
-      if (currentProgress < 45) {
-        currentProgress += 1;
-      } else if (currentProgress >= 45 && currentProgress < 55) {
-        // SLOW DOWN / STOP for the "Peek"
-        currentProgress += 0.2; // Very slow crawl
-      } else {
-        // SPEED UP after peek
-        currentProgress += 2;
-      }
-
-      setProgress(currentProgress);
-    }, 40);
-
-    const timers = [
-      setTimeout(() => setLoadingStep(1), 500),
-      setTimeout(() => setLoadingStep(2), 2000), // Around the peek time
-      setTimeout(() => setLoadingStep(3), 4000),
-      setTimeout(() => router.push("/login"), 5000),
-    ];
-
-    return () => {
-      timers.forEach(clearTimeout);
-      clearInterval(interval);
-    };
+    return () => clearInterval(timer);
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center relative overflow-hidden font-sans selection:bg-primary/20">
+    <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden font-sans text-white bg-blue-900">
+      <TechBackground />
 
-      {/* 1. LAYER: ELEGANT GRADIENT BACKGROUND (Not dizzying) */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 pointer-events-none" />
-      <div className="absolute inset-0 bg-[linear-gradient(#e5e7eb_1px,transparent_1px)] [background-size:40px_40px] opacity-20" />
+      {/* Glowing Orbs */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/30 rounded-full blur-[128px] mix-blend-screen animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-[128px] mix-blend-screen animate-pulse" />
 
-      {/* 2. LAYER: BEAUTIFUL FLOATING ORBS (Ambient) */}
-      <GlowingOrb size="300px" color="rgba(14, 41, 218, 0.08)" x="-5%" y="10%" duration={8} delay={0} />
-      <GlowingOrb size="400px" color="rgba(76, 107, 255, 0.08)" x="80%" y="60%" duration={12} delay={2} />
-      <GlowingOrb size="200px" color="rgba(34, 197, 94, 0.08)" x="60%" y="-10%" duration={10} delay={1} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={isReady ? {
+          scale: [1, 1.05, 0],
+          opacity: [1, 1, 0],
+          rotate: [0, 2, -2]
+        } : {
+          opacity: 1,
+          scale: 1
+        }}
+        transition={isReady ? {
+          duration: 0.8,
+          times: [0, 0.2, 1],
+          ease: "easeInOut"
+        } : {
+          duration: 0.8
+        }}
+        className="z-10 w-full max-w-5xl px-6"
+      >
+        {/* Main Card */}
+        <div className="bg-blue-950/80 backdrop-blur-xl border border-blue-400/30 rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] p-10 md:p-14 relative overflow-hidden">
 
-      {/* 3. LAYER: FLOATING TECH ELEMENTS (Varied & Clean) */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {/* Code Snippets floating up */}
-        <FloatingSnippet delay={0} x="10%" y="80%" text="<Secure />" />
-        <FloatingSnippet delay={2} x="85%" y="70%" text="{ init: true }" />
-        <FloatingSnippet delay={4} x="20%" y="60%" text="import Diraya" />
-        <FloatingSnippet delay={1} x="70%" y="90%" text="const speed = 100" />
-
-        {/* Icons floating freely */}
-        <motion.div animate={{ y: [0, -20, 0], rotate: 10 }} transition={{ duration: 5, repeat: Infinity }} className="absolute top-[20%] left-[15%] text-primary/20">
-          <Box size={40} />
-        </motion.div>
-        <motion.div animate={{ y: [0, 30, 0], rotate: -10 }} transition={{ duration: 7, repeat: Infinity }} className="absolute bottom-[20%] right-[10%] text-accent-glow/30">
-          <Layers size={50} />
-        </motion.div>
-        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 4, repeat: Infinity }} className="absolute top-[10%] right-[30%] text-green-500/20">
-          <Wifi size={30} />
-        </motion.div>
-      </div>
-
-      {/* MAIN CONTENT CARD */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key="main-card-elegan"
-          initial={{ scale: 0.9, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          className="z-20 w-full max-w-xl p-4"
-        >
-          <div className="bg-white/70 backdrop-blur-xl p-10 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-white/60 relative overflow-hidden ring-1 ring-white/80">
-
-            {/* Top Decor */}
-            <div className="flex justify-center mb-8">
+          {/* Shine effect when ready */}
+          <AnimatePresence>
+            {isReady && (
               <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="relative w-72 h-20"
+                initial={{ x: "-100%" }}
+                animate={{ x: "200%" }}
+                transition={{ duration: 0.5 }}
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12 z-20"
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Header Section */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-10 mb-12">
+            <div className="flex items-center gap-6">
+              <motion.div
+                animate={isReady ? { scale: [1, 1.2, 1], rotate: [0, 10, 0] } : {}}
+                className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/40 transform transition-transform flex-shrink-0"
               >
-                <Image src="/diraya-logo.png" alt="Diraya Tech" fill className="object-contain" priority />
+                <Ticket size={32} className="text-white" />
               </motion.div>
+              <div className="flex flex-col justify-center">
+                <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-white mb-3 drop-shadow-lg whitespace-nowrap leading-none">
+                  Diraya Tech Ticketing System
+                </h1>
+                <div>
+                  <span className="text-cyan-100 font-semibold text-[10px] md:text-xs tracking-[0.2em] bg-blue-800/30 px-4 py-1.5 rounded-full border border-blue-400/30 shadow-[0_0_15px_rgba(34,211,238,0.1)] uppercase backdrop-blur-sm inline-block">
+                    Multi-Product Admin Ticketing Portal
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* Text Status Area */}
-            <div className="h-12 flex flex-col items-center justify-center mb-2">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={loadingStep}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="text-center"
+            <div className="relative flex items-center justify-center flex-shrink-0">
+              <svg className="w-32 h-32 transform -rotate-90">
+                <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-blue-900/50" />
+                <motion.circle
+                  cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-cyan-400"
+                  initial={{ strokeDasharray: "0 352" }}
+                  animate={{ strokeDasharray: `${progress * 3.52} 352` }}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute flex flex-col items-center">
+                <motion.span
+                  animate={isReady ? { scale: [1, 1.3, 1] } : {}}
+                  className="text-3xl font-bold font-mono text-white drop-shadow-md"
                 >
-                  {loadingStep === 0 && <span className="text-text-muted text-sm font-medium flex items-center gap-2"><Sparkles size={14} className="text-yellow-500" /> Preparing Environment...</span>}
-                  {loadingStep === 1 && <span className="text-primary text-sm font-medium flex items-center gap-2"><Database size={14} /> Fetching Data...</span>}
-                  {loadingStep === 2 && <span className="text-orange-500 text-sm font-bold flex items-center gap-2 animate-pulse">Wait for it...</span>}
-                  {loadingStep >= 3 && <span className="text-green-600 text-sm font-bold flex items-center gap-2"><Rocket size={14} /> Launching!</span>}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            {/* THE MASCOT LOADER */}
-            <MascotLoader progress={progress} />
-
-            {/* Bottom Metadata */}
-            <div className="mt-10 flex justify-between items-center text-[10px] text-gray-400 font-mono tracking-widest uppercase opacity-70">
-              <span className="flex items-center gap-1">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
-                Secure Connection
-              </span>
-              <span>SID: {sessionId}</span>
+                  {Math.floor(progress)}%
+                </motion.span>
+              </div>
             </div>
           </div>
-        </motion.div>
-      </AnimatePresence>
+
+          {/* Content Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            <div className="col-span-2">
+              <div className="mb-4 flex items-center justify-between">
+                <span className="text-xs font-bold text-blue-300 uppercase tracking-wider">System Initialization Log</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-xs text-green-400 font-mono">ONLINE</span>
+                </div>
+              </div>
+              <SystemLog logs={logs} />
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-blue-300 uppercase tracking-wider mb-2">Core System Modules</h3>
+              {[
+                { name: "Dashboard Overview", icon: LayoutDashboard },
+                { name: "Ticket Management", icon: Ticket },
+                { name: "Report & Analytics", icon: BarChart3 },
+                { name: "Admin Session Control", icon: ShieldCheck }
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3 p-3 bg-blue-900/40 rounded-lg border border-blue-800/50 hover:bg-blue-800/40 transition-colors">
+                  <item.icon size={16} className="text-cyan-400" />
+                  <span className="text-sm font-medium text-blue-100 flex-1">{item.name}</span>
+                  <CheckCircle2 size={16} className="text-green-400" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="w-full h-2 bg-blue-950/40 rounded-full overflow-hidden border border-blue-400/20 shadow-inner mt-4">
+            <motion.div
+              className="h-full bg-gradient-to-r from-blue-600 via-cyan-400 to-white relative"
+              initial={{ width: "0%" }}
+              animate={{ width: `${progress}%` }}
+              transition={{ ease: "easeOut", duration: 0.1 }}
+            >
+              {/* Animated Shine Effect */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent w-full h-full"
+                animate={{ x: ['-100%', '100%'] }}
+                transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+              />
+            </motion.div>
+          </div>
+        </div>
+      </motion.div>
+
+      <div className="absolute bottom-6 text-blue-400/60 text-xs font-semibold tracking-widest uppercase">
+        Powered by Diraya Tech
+      </div>
     </div>
   );
 }

@@ -1,67 +1,85 @@
 @import "tailwindcss";
 
 :root {
-  /* DIRAYA TECH PALETTE */
-  /* Primary */
-  --pk-primary-500: #0E29DA; /* Main Brand */
-  --pk-primary-600: #0B22B8; /* Hover */
-  --pk-primary-700: #081A8F; /* Active */
+  /* DIRAYA TECH - REFINED PREMIUM DARK NAVY PALETTE */
+  --pk-bg-outer: #0A1332;
+  /* Slightly darker for better depth */
+  --pk-bg-main: #0E1F4D;
+  --pk-bg-card: #162B63;
+  --pk-bg-header: #1B3A8A;
 
-  /* Accent */
-  --pk-accent-glow: #4C6BFF;
-  --pk-accent-soft: #E8EDFF;
+  --pk-accent: #2EA9FF;
+  --pk-accent-glow: #00E5FF;
+  --pk-accent-hover: #4FC3F7;
 
-  /* Neutral */
-  --pk-white: #FFFFFF;
-  --pk-gray-light: #F2F3F5;
-  --pk-border-soft: #E5E7EB;
+  --pk-success: #22C55E;
+  --pk-error: #EF4444;
 
-  /* Text */
-  --pk-text-heading: #000000;
-  --pk-text-dark: #1A1F2B;
-  --pk-text-body: #6B7280;
-  --pk-text-muted: #9CA3AF;
+  --pk-text-primary: #FFFFFF;
+  --pk-text-secondary: #CBD5E1;
+  --pk-text-muted: #94A3B8;
 
-  /* Status */
-  --pk-status-success: #22C55E;
-  --pk-status-warning: #F59E0B;
-  --pk-status-error: #EF4444;
-  --pk-status-info: #3B82F6;
-
-  --background: var(--pk-gray-light);
-  --foreground: var(--pk-text-dark);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-mono);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  
-  --color-primary: var(--pk-primary-500);
-  --color-primary-hover: var(--pk-primary-600);
-  --color-primary-active: var(--pk-primary-700);
+  --color-app-bg-outer: var(--pk-bg-outer);
+  --color-app-bg: var(--pk-bg-main);
+  --color-app-card: var(--pk-bg-card);
+  --color-app-header: var(--pk-bg-header);
 
-  --color-accent-glow: var(--pk-accent-glow);
-  --color-accent-soft: var(--pk-accent-soft);
+  --color-app-accent: var(--pk-accent);
+  --color-app-glow: var(--pk-accent-glow);
+  --color-app-hover: var(--pk-accent-hover);
 
-  --color-neutral-white: var(--pk-white);
-  --color-neutral-light: var(--pk-gray-light);
-  --color-neutral-border: var(--pk-border-soft);
+  --color-app-success: var(--pk-success);
+  --color-app-error: var(--pk-error);
 
-  --color-text-heading: var(--pk-text-heading);
-  --color-text-main: var(--pk-text-dark);
-  --color-text-body: var(--pk-text-body);
-  --color-text-muted: var(--pk-text-muted);
+  --color-app-text: var(--pk-text-primary);
+  --color-app-text-sub: var(--pk-text-secondary);
+  --color-app-text-mute: var(--pk-text-muted);
 
-  --color-status-success: var(--pk-status-success);
-  --color-status-warning: var(--pk-status-warning);
-  --color-status-error: var(--pk-status-error);
-  --color-status-info: var(--pk-status-info);
+  --font-inter: var(--font-sans);
+  --font-jetbrains: var(--font-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--pk-bg-outer);
+  color: var(--pk-text-primary);
+  font-family: var(--font-sans), sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Utilities */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Premium Card Utility */
+.premium-card {
+  background: linear-gradient(135deg, rgba(22, 43, 99, 0.8) 0%, rgba(14, 31, 77, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5);
+}
+
+.premium-card:hover {
+  border-color: rgba(46, 169, 255, 0.4);
+  box-shadow: 0 25px 60px -12px rgba(46, 169, 255, 0.15);
+}
+
+/* Tech Text Glow */
+.text-glow {
+  text-shadow: 0 0 20px rgba(46, 169, 255, 0.5);
+}
+
+.accent-glow {
+  box-shadow: 0 0 30px rgba(0, 229, 255, 0.3);
 }
