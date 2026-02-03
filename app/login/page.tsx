@@ -27,7 +27,7 @@ export default function LoginPage() {
         setIsLoading(true);
         // Professional simulation delay for high-security verification atmosphere
         setTimeout(() => {
-            router.push("/AdminOrbit/dashboard");
+            router.push("/dashboard");
         }, 4000);
     };
 
