@@ -54,7 +54,7 @@ export default function LandingPage() {
   useEffect(() => {
     setProgress(0);
     let currentProgress = 0;
-    const stepRate = 1.6;
+    const stepRate = 0.4; // Significantly slower for a more impressive system initialization feel
 
     const timer = setInterval(() => {
       currentProgress += stepRate;
@@ -72,17 +72,15 @@ export default function LandingPage() {
       if (currentProgress >= 100) {
         setIsReady(true);
         clearInterval(timer);
-        setTimeout(() => {
-          router.push("/AdminOrbit/dashboard");
-        }, 1000);
+        router.push("/login");
       }
-    }, 70);
+    }, 40);
 
     return () => clearInterval(timer);
   }, [router]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden font-sans text-white bg-blue-900">
+    <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden font-sans text-white bg-[#0A1332]">
       <TechBackground />
 
       {/* Glowing Orbs */}
