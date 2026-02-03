@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import Header from "@/app/components/Header";
 import {
     Ticket,
@@ -33,7 +34,7 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 
 // Mock Data
-const ticketTrendData = [
+const ticketTrendData30d = [
     { name: 'Mon', tickets: 24, resolved: 18 },
     { name: 'Tue', tickets: 38, resolved: 28 },
     { name: 'Wed', tickets: 30, resolved: 25 },
@@ -41,6 +42,16 @@ const ticketTrendData = [
     { name: 'Fri', tickets: 55, resolved: 48 },
     { name: 'Sat', tickets: 20, resolved: 15 },
     { name: 'Sun', tickets: 15, resolved: 12 },
+];
+
+const ticketTrendData7d = [
+    { name: 'Mon', tickets: 12, resolved: 10 },
+    { name: 'Tue', tickets: 15, resolved: 14 },
+    { name: 'Wed', tickets: 22, resolved: 20 },
+    { name: 'Thu', tickets: 18, resolved: 16 },
+    { name: 'Fri', tickets: 28, resolved: 25 },
+    { name: 'Sat', tickets: 10, resolved: 8 },
+    { name: 'Sun', tickets: 5, resolved: 5 },
 ];
 
 const statusDistData = [
@@ -104,7 +115,8 @@ function StatsCard({ title, value, icon, trend, trendUp }: StatsCardProps) {
     );
 }
 
-function ProductStatCard({ name, total, active }: { name: string, total: number, active: number }) {
+function ProductStatCard({ name, total, active, url }: { name: string, total: number, active: number, url?: string }) {
+    const router = useRouter();
     return (
         <motion.div variants={itemVariants as any} className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] hover:border-[#1500FF]/20 transition-all duration-300 group hover:-translate-y-1">
             <div className="flex justify-between items-start mb-6">
@@ -117,7 +129,10 @@ function ProductStatCard({ name, total, active }: { name: string, total: number,
                         <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Software Product</p>
                     </div>
                 </div>
-                <button className="text-slate-300 hover:text-slate-600 transition-colors">
+                <button
+                    onClick={() => router.push(`/dashboard/products?search=${encodeURIComponent(name)}`)}
+                    className="text-slate-300 hover:text-slate-600 transition-colors"
+                >
                     <MoreHorizontal size={18} />
                 </button>
             </div>
@@ -134,7 +149,10 @@ function ProductStatCard({ name, total, active }: { name: string, total: number,
             </div>
 
             <div className="pt-4 border-t border-slate-50">
-                <button className="w-full text-xs font-bold text-slate-500 hover:text-[#1500FF] flex items-center justify-between transition-colors group-hover:px-2">
+                <button
+                    onClick={() => router.push(url || `/dashboard/tickets?product=${encodeURIComponent(name)}`)}
+                    className="w-full text-xs font-bold text-slate-500 hover:text-[#1500FF] flex items-center justify-between transition-colors group-hover:px-2"
+                >
                     View Dashboard <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 group-hover:text-[#1500FF]" />
                 </button>
             </div>
@@ -143,14 +161,33 @@ function ProductStatCard({ name, total, active }: { name: string, total: number,
 }
 
 export default function SuperAdminDashboard() {
+    const router = useRouter();
     const [greeting, setGreeting] = useState("Welcome back");
+    const [filterRange, setFilterRange] = useState<"30d" | "7d">("30d");
+
+    const currentTrendData = filterRange === "30d" ? ticketTrendData30d : ticketTrendData7d;
 
     useEffect(() => {
-        const hour = new Date().getHours();
-        if (hour < 12) setGreeting("Good Morning");
-        else if (hour < 18) setGreeting("Good Afternoon");
-        else setGreeting("Good Evening");
+        const updateGreeting = () => {
+            // Get current time in Jakarta (WIB)
+            const params = { timeZone: 'Asia/Jakarta', hour: 'numeric' as const, hour12: false };
+            const hourString = new Intl.DateTimeFormat('en-US', params).format(new Date());
+            const hour = parseInt(hourString, 10);
+
+            if (hour < 12) setGreeting("Good Morning");
+            else if (hour < 18) setGreeting("Good Afternoon");
+            else setGreeting("Good Evening");
+        };
+
+        updateGreeting(); // Initial call
+        const interval = setInterval(updateGreeting, 60000); // Update every minute
+
+        return () => clearInterval(interval);
     }, []);
+
+    const toggleFilter = () => {
+        setFilterRange(prev => prev === "30d" ? "7d" : "30d");
+    };
 
     return (
         <div className="min-h-screen pb-12 bg-[#F8FAFC]">
@@ -160,28 +197,32 @@ export default function SuperAdminDashboard() {
                 variants={containerVariants as any}
                 initial="hidden"
                 animate="show"
-                className="max-w-[1600px] mx-auto px-8 py-8 space-y-10"
+                className="max-w-[1600px] mx-auto px-4 md:px-8 pt-4 pb-8 space-y-10"
             >
 
                 {/* 1. Key Metrics */}
                 <section>
-                    <motion.div variants={itemVariants as any} className="flex items-center justify-between mb-6">
+                    <motion.div variants={itemVariants as any} className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                         <div>
                             <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">{greeting}, Super Admin</h2>
                             <p className="text-sm font-medium text-slate-500 mt-1">Here's what's happening in your system today.</p>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold text-slate-600 shadow-sm cursor-pointer hover:bg-slate-50 hover:border-[#1500FF]/30 hover:text-[#1500FF] transition-all">
-                                <Filter size={14} /> Last 30 Days
+                            <div
+                                onClick={toggleFilter}
+                                className={`flex items-center gap-2 border rounded-xl px-4 py-2 text-xs font-bold shadow-sm cursor-pointer transition-all select-none
+                                    ${filterRange === '7d' ? 'bg-[#1500FF] border-[#1500FF] text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-[#1500FF]/30 hover:text-[#1500FF]'}`}
+                            >
+                                <Filter size={14} /> {filterRange === "30d" ? "Last 30 Days" : "Last 7 Days"}
                             </div>
                         </div>
                     </motion.div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-                        <StatsCard title="Total Tickets" value="2,543" icon={<Ticket size={24} />} trend="+12%" trendUp={true} />
+                        <StatsCard title="Total Tickets" value={filterRange === '30d' ? "2,543" : "432"} icon={<Ticket size={24} />} trend={filterRange === '30d' ? "+12%" : "+5%"} trendUp={true} />
                         <StatsCard title="Pending" value="32" icon={<Inbox size={24} />} />
                         <StatsCard title="In Progress" value="128" icon={<Clock size={24} />} />
-                        <StatsCard title="Resolved" value="2,312" icon={<CheckCircle2 size={24} />} trend="+8%" trendUp={true} />
+                        <StatsCard title="Resolved" value={filterRange === '30d' ? "2,312" : "380"} icon={<CheckCircle2 size={24} />} trend="+8%" trendUp={true} />
                         <StatsCard title="Satisfaction Score" value="4.9/5.0" icon={<Star size={24} />} trend="+0.2" trendUp={true} />
                     </div>
                 </section>
@@ -190,10 +231,10 @@ export default function SuperAdminDashboard() {
                 <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Ticket Volume (Area Chart) */}
                     <motion.div variants={itemVariants as any} className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 p-8 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between mb-8">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
                             <div>
                                 <h3 className="font-bold text-slate-800 text-lg">Weekly Ticket Volume</h3>
-                                <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">Incoming requests vs resolved</p>
+                                <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">Incoming requests vs resolved ({filterRange === '30d' ? '30 days' : '7 days'})</p>
                             </div>
                             <div className="flex items-center gap-4 text-xs font-bold">
                                 <span className="flex items-center gap-2 text-slate-600 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100"><span className="w-2 h-2 rounded-full bg-[#1500FF] shadow-[0_0_8px_#1500FF]"></span>Tickets</span>
@@ -202,7 +243,7 @@ export default function SuperAdminDashboard() {
                         </div>
                         <div className="h-[320px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={ticketTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <AreaChart data={currentTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorTickets" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#1500FF" stopOpacity={0.2} />
@@ -257,7 +298,9 @@ export default function SuperAdminDashboard() {
                             </ResponsiveContainer>
                             {/* Center Text */}
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-                                <span className="block text-4xl font-black text-slate-800 tracking-tighter">2.5k</span>
+                                <span className="block text-4xl font-black text-slate-800 tracking-tighter">
+                                    {filterRange === '30d' ? '2.5k' : '0.4k'}
+                                </span>
                                 <span className="text-[10px] text-slate-400 uppercase tracking-widest font-extrabold">Total</span>
                             </div>
                         </div>
@@ -287,7 +330,11 @@ export default function SuperAdminDashboard() {
                             <ProductStatCard name="Joki Informatika" total={1240} active={85} />
                             <ProductStatCard name="Orbit Billiard" total={453} active={24} />
 
-                            <motion.div variants={itemVariants as any} className="border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-8 text-slate-400 hover:border-[#1500FF]/40 hover:text-[#1500FF] hover:bg-[#1500FF]/5 transition-all cursor-pointer min-h-[200px] group">
+                            <motion.div
+                                variants={itemVariants as any}
+                                onClick={() => router.push('/dashboard/products/create')}
+                                className="border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-8 text-slate-400 hover:border-[#1500FF]/40 hover:text-[#1500FF] hover:bg-[#1500FF]/5 transition-all cursor-pointer min-h-[200px] group"
+                            >
                                 <div className="p-4 bg-slate-50 rounded-full mb-3 group-hover:bg-white transition-colors group-hover:shadow-md group-hover:shadow-[#1500FF]/20">
                                     <Plus size={28} className="opacity-70 group-hover:opacity-100 transition-opacity" />
                                 </div>
@@ -303,15 +350,24 @@ export default function SuperAdminDashboard() {
                         <motion.section variants={itemVariants as any} className="bg-white rounded-2xl border border-slate-100 p-8 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)]">
                             <h3 className="font-extrabold text-slate-800 mb-6 text-xs uppercase tracking-widest">Quick Actions</h3>
                             <div className="space-y-3">
-                                <button className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-[#1500FF] border border-transparent hover:shadow-lg hover:shadow-[#1500FF]/25 rounded-xl transition-all group duration-300">
+                                <button
+                                    onClick={() => router.push('/dashboard/tickets')}
+                                    className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-[#1500FF] border border-transparent hover:shadow-lg hover:shadow-[#1500FF]/25 rounded-xl transition-all group duration-300"
+                                >
                                     <span className="text-sm font-bold text-slate-600 group-hover:text-white">Create New Ticket</span>
                                     <Plus size={18} className="text-slate-400 group-hover:text-white" />
                                 </button>
-                                <button className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-[#1500FF] border border-transparent hover:shadow-lg hover:shadow-[#1500FF]/25 rounded-xl transition-all group duration-300">
+                                <button
+                                    onClick={() => router.push('/dashboard/reports')}
+                                    className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-[#1500FF] border border-transparent hover:shadow-lg hover:shadow-[#1500FF]/25 rounded-xl transition-all group duration-300"
+                                >
                                     <span className="text-sm font-bold text-slate-600 group-hover:text-white">Generate Report</span>
                                     <Download size={18} className="text-slate-400 group-hover:text-white" />
                                 </button>
-                                <button className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-[#1500FF] border border-transparent hover:shadow-lg hover:shadow-[#1500FF]/25 rounded-xl transition-all group duration-300">
+                                <button
+                                    onClick={() => router.push('/dashboard/admins')}
+                                    className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-[#1500FF] border border-transparent hover:shadow-lg hover:shadow-[#1500FF]/25 rounded-xl transition-all group duration-300"
+                                >
                                     <span className="text-sm font-bold text-slate-600 group-hover:text-white">Manage Admins</span>
                                     <Users size={18} className="text-slate-400 group-hover:text-white" />
                                 </button>
