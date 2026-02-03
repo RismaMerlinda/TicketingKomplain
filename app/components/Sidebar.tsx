@@ -15,51 +15,28 @@ import {
     Layers
 } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
+import { useAuth } from "../context/AuthContext";
+// @ts-ignore
+import { navConfig } from "@/navConfig";
 
 // Helper for conditional classes
 function cx(...classes: (string | undefined | null | false)[]) {
     return classes.filter(Boolean).join(" ");
 }
 
-const mainMenuItems = [
-    {
-        title: "Dashboard",
-        href: "/dashboard",
-        icon: LayoutDashboard,
-    },
-    {
-        title: "Tickets",
-        href: "/dashboard/tickets",
-        icon: Ticket,
-    },
-];
-
-const managementMenuItems = [
-    {
-        title: "Products",
-        href: "/dashboard/products",
-        icon: Package,
-    },
-    {
-        title: "Admin Produk",
-        href: "/dashboard/admins",
-        icon: Users,
-    },
-    {
-        title: "Reports",
-        href: "/dashboard/reports",
-        icon: FileBarChart,
-    },
-    {
-        title: "Activity Log",
-        href: "/dashboard/activity",
-        icon: Activity,
-    },
-];
-
 export default function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname();
     const { close } = useSidebar();
+    const { user, logout } = useAuth();
+
+    // Filter Logic
+    const filteredMainMenu = navConfig.mainMenu.filter((item: any) =>
+        !item.roles || (user?.role && item.roles.includes(user.role))
+    );
+
+    const filteredManagementMenu = navConfig.managementMenu.filter((item: any) =>
+        !item.roles || (user?.role && item.roles.includes(user.role))
+    );
 
     return (
         <aside className={cx("h-full w-full flex flex-col bg-white border-r border-slate-100", className)}>
@@ -75,8 +52,13 @@ export default function Sidebar({ className }: { className?: string }) {
                         className="object-contain"
                     />
                     <div className="flex flex-col justify-center">
-                        <span className="font-extrabold text-lg text-slate-900 tracking-tight leading-none">Super<span className="text-[#1500FF]">Admin</span></span>
-                        <span className="text-[10px] text-slate-400 font-bold tracking-widest uppercase mt-1">Control Panel</span>
+                        <span className="font-extrabold text-lg text-slate-900 tracking-tight leading-none">
+                            {user?.role === 'SUPER_ADMIN' ? 'Super' : 'Product'}
+                            <span className="text-[#1500FF]">Admin</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-bold tracking-widest uppercase mt-1">
+                            {user?.productId ? user.productId.toUpperCase() : 'Control Panel'}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -88,7 +70,7 @@ export default function Sidebar({ className }: { className?: string }) {
                 <div>
                     <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest px-3 mb-3">Main Menu</div>
                     <div className="space-y-1">
-                        {mainMenuItems.map((item) => {
+                        {filteredMainMenu.map((item: any) => {
                             const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
                             return (
@@ -122,7 +104,7 @@ export default function Sidebar({ className }: { className?: string }) {
                 <div>
                     <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest px-3 mb-3">Management</div>
                     <div className="space-y-1">
-                        {managementMenuItems.map((item) => {
+                        {filteredManagementMenu.map((item) => {
                             const isActive = pathname.startsWith(item.href);
                             return (
                                 <Link
@@ -158,11 +140,11 @@ export default function Sidebar({ className }: { className?: string }) {
                 <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
                     <div className="flex items-center gap-3 w-full mb-3">
                         <div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-sm font-extrabold text-[#1500FF] shadow-sm">
-                            SA
+                            {user?.name?.substring(0, 2).toUpperCase() || 'US'}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <div className="text-sm font-bold text-slate-800 truncate">Super Admin</div>
-                            <div className="text-[11px] text-slate-500 truncate font-medium">system@ticketing.io</div>
+                            <div className="text-sm font-bold text-slate-800 truncate">{user?.name || 'User'}</div>
+                            <div className="text-[11px] text-slate-500 truncate font-medium">{user?.email || 'user@email.com'}</div>
                         </div>
                     </div>
 
@@ -175,6 +157,7 @@ export default function Sidebar({ className }: { className?: string }) {
                             <UserCircle size={14} /> Profile
                         </Link>
                         <button
+                            onClick={logout}
                             className="flex items-center justify-center gap-2 py-2 rounded-lg text-[11px] font-bold text-rose-600 bg-white border border-slate-200 hover:bg-rose-50 hover:border-rose-200 transition-all"
                         >
                             <LogOut size={14} /> Logout

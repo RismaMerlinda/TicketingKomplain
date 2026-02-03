@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../context/AuthContext";
 import { Mail, Lock, LogIn, User, Eye, EyeOff, KeyRound } from "lucide-react";
 
 // --- Components ---
@@ -17,7 +18,8 @@ const TechBackground = () => (
 );
 
 export default function LoginPage() {
-    const router = useRouter();
+    const { login } = useAuth();
+    const router = useRouter(); // Keep for now in case
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [formData, setFormData] = useState({ email: "", password: "" });
@@ -27,8 +29,8 @@ export default function LoginPage() {
         setIsLoading(true);
         // Professional simulation delay for high-security verification atmosphere
         setTimeout(() => {
-            router.push("/dashboard");
-        }, 4000);
+            login(formData.email);
+        }, 1500); // Reduced slightly for better UX while testing
     };
 
     return (

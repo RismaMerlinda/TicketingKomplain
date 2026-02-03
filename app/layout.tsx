@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "Internal Complaint Ticketing System for Diraya Tech",
 };
 
+import { AuthProvider } from "./context/AuthContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -16,7 +18,9 @@ export default function RootLayout({
       <body
         className={`font-sans antialiased`}
       >
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

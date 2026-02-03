@@ -34,6 +34,7 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 
 // Mock Data
+// Mock Data
 const ticketTrendData30d = [
     { name: 'Mon', tickets: 24, resolved: 18 },
     { name: 'Tue', tickets: 38, resolved: 28 },
@@ -60,6 +61,75 @@ const statusDistData = [
     { name: 'Pending', value: 32, color: '#64748B' },
     { name: 'Critical', value: 12, color: '#F43F5E' },
 ];
+
+const PRODUCT_MOCK_DATA: Record<string, any> = {
+    orbit: {
+        trend: [
+            { name: 'Mon', tickets: 5, resolved: 4 },
+            { name: 'Tue', tickets: 8, resolved: 6 },
+            { name: 'Wed', tickets: 6, resolved: 5 },
+            { name: 'Thu', tickets: 10, resolved: 9 },
+            { name: 'Fri', tickets: 12, resolved: 10 },
+            { name: 'Sat', tickets: 4, resolved: 3 },
+            { name: 'Sun', tickets: 2, resolved: 2 },
+        ],
+        stats: { total: 120, active: 15, resolved: 105, satisfaction: 4.5 },
+        dist: [
+            { name: 'Resolved', value: 105, color: '#10B981' },
+            { name: 'In Progress', value: 10, color: '#F59E0B' },
+            { name: 'Pending', value: 5, color: '#64748B' },
+        ],
+        activity: [
+            { text: "Table 4 reservation issue resolved", time: "10 min ago", user: "Admin Orbit" },
+            { text: "New booking request #ORB-202", time: "32 min ago", user: "System" },
+            { text: "Payment gateway synced", time: "2 hrs ago", user: "Manager" }
+        ]
+    },
+    catatmark: {
+        trend: [
+            { name: 'Mon', tickets: 15, resolved: 12 },
+            { name: 'Tue', tickets: 20, resolved: 18 },
+            { name: 'Wed', tickets: 18, resolved: 15 },
+            { name: 'Thu', tickets: 25, resolved: 22 },
+            { name: 'Fri', tickets: 30, resolved: 28 },
+            { name: 'Sat', tickets: 10, resolved: 8 },
+            { name: 'Sun', tickets: 8, resolved: 6 },
+        ],
+        stats: { total: 450, active: 35, resolved: 415, satisfaction: 4.8 },
+        dist: [
+            { name: 'Resolved', value: 415, color: '#10B981' },
+            { name: 'In Progress', value: 25, color: '#F59E0B' },
+            { name: 'Pending', value: 10, color: '#64748B' },
+        ],
+        activity: [
+            { text: "Sync bug on iOS fixed", time: "5 min ago", user: "Dev Team" },
+            { text: "User feedback report generated", time: "1 hr ago", user: "Admin Catatmark" },
+            { text: "New premium subscription #CM-900", time: "3 hrs ago", user: "System" }
+        ]
+    },
+    joki: {
+        trend: [
+            { name: 'Mon', tickets: 30, resolved: 20 },
+            { name: 'Tue', tickets: 45, resolved: 35 },
+            { name: 'Wed', tickets: 40, resolved: 30 },
+            { name: 'Thu', tickets: 50, resolved: 40 },
+            { name: 'Fri', tickets: 60, resolved: 50 },
+            { name: 'Sat', tickets: 25, resolved: 15 },
+            { name: 'Sun', tickets: 20, resolved: 15 },
+        ],
+        stats: { total: 890, active: 85, resolved: 805, satisfaction: 4.2 },
+        dist: [
+            { name: 'Resolved', value: 805, color: '#10B981' },
+            { name: 'In Progress', value: 60, color: '#F59E0B' },
+            { name: 'Pending', value: 25, color: '#64748B' },
+        ],
+        activity: [
+            { text: "Assignment help request #JK-88", time: "2 min ago", user: "Admin Joki" },
+            { text: "Tutor assigned to Ticket #JK-42", time: "15 min ago", user: "System" },
+            { text: "Refund processed for user #992", time: "4 hrs ago", user: "Finance" }
+        ]
+    }
+};
 
 // Types
 interface StatsCardProps {
@@ -160,12 +230,28 @@ function ProductStatCard({ name, total, active, url }: { name: string, total: nu
     );
 }
 
+import { useAuth } from "../context/AuthContext";
+// ... imports
+
 export default function SuperAdminDashboard() {
     const router = useRouter();
+    const { user } = useAuth();
     const [greeting, setGreeting] = useState("Welcome back");
     const [filterRange, setFilterRange] = useState<"30d" | "7d">("30d");
 
-    const currentTrendData = filterRange === "30d" ? ticketTrendData30d : ticketTrendData7d;
+    const productData = user?.productId ? PRODUCT_MOCK_DATA[user.productId] : null;
+
+    const currentTrendData = productData
+        ? productData.trend
+        : (filterRange === "30d" ? ticketTrendData30d : ticketTrendData7d);
+
+    const currentDistData = productData ? productData.dist : statusDistData;
+    const stats = productData ? productData.stats : null;
+    const activityFeed = productData ? productData.activity : [
+        { text: "Ticket #2942 resolved", time: "2 min ago", user: "Admin Joki" },
+        { text: "New report generated", time: "15 min ago", user: "System" },
+        { text: "User added to Orbit", time: "1 hr ago", user: "Super Admin" }
+    ];
 
     useEffect(() => {
         const updateGreeting = () => {
@@ -202,9 +288,15 @@ export default function SuperAdminDashboard() {
 
                 {/* 1. Key Metrics */}
                 <section>
+                    {user?.role === 'PRODUCT_ADMIN' && user?.productId && (
+                        <motion.div variants={itemVariants as any} className="mb-6 p-4 bg-[#1500FF]/5 border border-[#1500FF]/20 rounded-xl flex items-center gap-3 text-[#1500FF]">
+                            <Package size={20} />
+                            <span className="font-bold text-sm">Viewing Dashboard for Product: <span className="uppercase">{user.productId}</span></span>
+                        </motion.div>
+                    )}
                     <motion.div variants={itemVariants as any} className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                         <div>
-                            <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">{greeting}, Super Admin</h2>
+                            <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">{greeting}, {user?.name || 'Admin'}</h2>
                             <p className="text-sm font-medium text-slate-500 mt-1">Here's what's happening in your system today.</p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -219,11 +311,11 @@ export default function SuperAdminDashboard() {
                     </motion.div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-                        <StatsCard title="Total Tickets" value={filterRange === '30d' ? "2,543" : "432"} icon={<Ticket size={24} />} trend={filterRange === '30d' ? "+12%" : "+5%"} trendUp={true} />
-                        <StatsCard title="Pending" value="32" icon={<Inbox size={24} />} />
-                        <StatsCard title="In Progress" value="128" icon={<Clock size={24} />} />
-                        <StatsCard title="Resolved" value={filterRange === '30d' ? "2,312" : "380"} icon={<CheckCircle2 size={24} />} trend="+8%" trendUp={true} />
-                        <StatsCard title="Satisfaction Score" value="4.9/5.0" icon={<Star size={24} />} trend="+0.2" trendUp={true} />
+                        <StatsCard title="Total Tickets" value={stats?.total ?? (filterRange === '30d' ? "2,543" : "432")} icon={<Ticket size={24} />} trend={filterRange === '30d' ? "+12%" : "+5%"} trendUp={true} />
+                        <StatsCard title="Pending" value={stats ? (stats.total - stats.resolved - stats.active) : "32"} icon={<Inbox size={24} />} />
+                        <StatsCard title="In Progress" value={stats?.active ?? "128"} icon={<Clock size={24} />} />
+                        <StatsCard title="Resolved" value={stats?.resolved ?? (filterRange === '30d' ? "2,312" : "380")} icon={<CheckCircle2 size={24} />} trend="+8%" trendUp={true} />
+                        <StatsCard title="Satisfaction Score" value={stats?.satisfaction ?? "4.9/5.0"} icon={<Star size={24} />} trend="+0.2" trendUp={true} />
                     </div>
                 </section>
 
@@ -279,7 +371,7 @@ export default function SuperAdminDashboard() {
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
-                                        data={statusDistData}
+                                        data={currentDistData}
                                         cx="50%"
                                         cy="50%"
                                         innerRadius={70}
@@ -289,7 +381,7 @@ export default function SuperAdminDashboard() {
                                         cornerRadius={8}
                                         stroke="none"
                                     >
-                                        {statusDistData.map((entry, index) => (
+                                        {currentDistData.map((entry: any, index: number) => (
                                             <Cell key={`cell-${index}`} fill={entry.color} />
                                         ))}
                                     </Pie>
@@ -299,13 +391,13 @@ export default function SuperAdminDashboard() {
                             {/* Center Text */}
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
                                 <span className="block text-4xl font-black text-slate-800 tracking-tighter">
-                                    {filterRange === '30d' ? '2.5k' : '0.4k'}
+                                    {stats ? stats.total : (filterRange === '30d' ? '2.5k' : '0.4k')}
                                 </span>
                                 <span className="text-[10px] text-slate-400 uppercase tracking-widest font-extrabold">Total</span>
                             </div>
                         </div>
                         <div className="mt-6 space-y-4">
-                            {statusDistData.map((item) => (
+                            {currentDistData.map((item: any) => (
                                 <div key={item.name} className="flex items-center justify-between text-sm group cursor-default">
                                     <div className="flex items-center gap-3">
                                         <div className="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)] transition-all group-hover:scale-125" style={{ backgroundColor: item.color }} />
@@ -323,23 +415,33 @@ export default function SuperAdminDashboard() {
                     {/* 3. Product Overview (Main Content) */}
                     <div className="lg:col-span-2 space-y-8">
                         <motion.h2 variants={itemVariants as any} className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-3">
-                            Product Health
+                            {user?.role === 'SUPER_ADMIN' ? 'Product Health' : 'My Product Overview'}
                         </motion.h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <ProductStatCard name="Catatmark" total={850} active={42} />
-                            <ProductStatCard name="Joki Informatika" total={1240} active={85} />
-                            <ProductStatCard name="Orbit Billiard" total={453} active={24} />
+                            {user?.role === 'SUPER_ADMIN' ? (
+                                <>
+                                    <ProductStatCard name="Catatmark" total={850} active={42} />
+                                    <ProductStatCard name="Joki Informatika" total={1240} active={85} />
+                                    <ProductStatCard name="Orbit Billiard" total={453} active={24} />
 
-                            <motion.div
-                                variants={itemVariants as any}
-                                onClick={() => router.push('/dashboard/products/create')}
-                                className="border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-8 text-slate-400 hover:border-[#1500FF]/40 hover:text-[#1500FF] hover:bg-[#1500FF]/5 transition-all cursor-pointer min-h-[200px] group"
-                            >
-                                <div className="p-4 bg-slate-50 rounded-full mb-3 group-hover:bg-white transition-colors group-hover:shadow-md group-hover:shadow-[#1500FF]/20">
-                                    <Plus size={28} className="opacity-70 group-hover:opacity-100 transition-opacity" />
-                                </div>
-                                <span className="text-xs font-extrabold uppercase tracking-wider">Add New Product</span>
-                            </motion.div>
+                                    <motion.div
+                                        variants={itemVariants as any}
+                                        onClick={() => router.push('/dashboard/products/create')}
+                                        className="border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-8 text-slate-400 hover:border-[#1500FF]/40 hover:text-[#1500FF] hover:bg-[#1500FF]/5 transition-all cursor-pointer min-h-[200px] group"
+                                    >
+                                        <div className="p-4 bg-slate-50 rounded-full mb-3 group-hover:bg-white transition-colors group-hover:shadow-md group-hover:shadow-[#1500FF]/20">
+                                            <Plus size={28} className="opacity-70 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                        <span className="text-xs font-extrabold uppercase tracking-wider">Add New Product</span>
+                                    </motion.div>
+                                </>
+                            ) : (
+                                <ProductStatCard
+                                    name={user?.productId ? user.productId.charAt(0).toUpperCase() + user.productId.slice(1) : "My Product"}
+                                    total={124}
+                                    active={12}
+                                />
+                            )}
                         </div>
                     </div>
 
@@ -384,11 +486,7 @@ export default function SuperAdminDashboard() {
                                 </div>
                             </div>
                             <div className="relative border-l border-slate-100 ml-2 space-y-8 pb-2">
-                                {[
-                                    { text: "Ticket #2942 resolved", time: "2 min ago", user: "Admin Joki" },
-                                    { text: "New report generated", time: "15 min ago", user: "System" },
-                                    { text: "User added to Orbit", time: "1 hr ago", user: "Super Admin" }
-                                ].map((item, i) => (
+                                {activityFeed.map((item: any, i: number) => (
                                     <div key={i} className="pl-8 relative group cursor-pointer hover:-translate-x-[-4px] transition-transform duration-200">
                                         <div className="absolute -left-[5px] top-1.5 w-[9px] h-[9px] rounded-full border-2 border-white bg-slate-300 group-hover:bg-[#1500FF] transition-colors ring-1 ring-slate-100 group-hover:ring-[#1500FF]/30 shadow-sm" />
                                         <p className="text-sm text-slate-600 font-bold group-hover:text-slate-900 transition-colors leading-relaxed">{item.text}</p>
