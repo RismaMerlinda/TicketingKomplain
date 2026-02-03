@@ -14,6 +14,7 @@ import {
     LogOut,
     Layers
 } from "lucide-react";
+import { useSidebar } from "../context/SidebarContext";
 
 // Helper for conditional classes
 function cx(...classes: (string | undefined | null | false)[]) {
@@ -56,14 +57,15 @@ const managementMenuItems = [
     },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname();
+    const { close } = useSidebar();
 
     return (
-        <aside className="fixed left-0 top-0 h-screen w-72 flex flex-col z-50 bg-white border-r border-slate-100">
+        <aside className={cx("h-full w-full flex flex-col bg-white border-r border-slate-100", className)}>
 
             {/* Brand */}
-            <div className="h-20 flex items-center px-8 mb-2">
+            <div className="h-20 flex-shrink-0 flex items-center px-8 mb-2">
                 <div className="flex items-center gap-4">
                     <Image
                         src="/logo_sidebar.png"
@@ -80,7 +82,7 @@ export default function Sidebar() {
             </div>
 
             {/* Menu */}
-            <nav className="flex-1 px-6 space-y-8 overflow-y-auto mt-2">
+            <nav className="flex-1 px-6 space-y-8 overflow-y-auto mt-2 scrollbar-hide">
 
                 {/* Main Menu */}
                 <div>
@@ -93,6 +95,7 @@ export default function Sidebar() {
                                 <Link
                                     key={item.href}
                                     href={item.href}
+                                    onClick={close}
                                     className={cx(
                                         "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group relative",
                                         isActive
@@ -125,6 +128,7 @@ export default function Sidebar() {
                                 <Link
                                     key={item.href}
                                     href={item.href}
+                                    onClick={close}
                                     className={cx(
                                         "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group relative",
                                         isActive
@@ -150,7 +154,7 @@ export default function Sidebar() {
             </nav>
 
             {/* User Mini Profile */}
-            <div className="p-6">
+            <div className="p-6 flex-shrink-0">
                 <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
                     <div className="flex items-center gap-3 w-full mb-3">
                         <div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-sm font-extrabold text-[#1500FF] shadow-sm">
@@ -165,6 +169,7 @@ export default function Sidebar() {
                     <div className="grid grid-cols-2 gap-2">
                         <Link
                             href="/dashboard/profile"
+                            onClick={close}
                             className="flex items-center justify-center gap-2 py-2 rounded-lg text-[11px] font-bold text-slate-600 bg-white border border-slate-200 hover:border-[#1500FF]/30 hover:text-[#1500FF] transition-all"
                         >
                             <UserCircle size={14} /> Profile
