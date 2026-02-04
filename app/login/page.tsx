@@ -29,7 +29,7 @@ export default function LoginPage() {
         setIsLoading(true);
         // Professional simulation delay for high-security verification atmosphere
         setTimeout(() => {
-            login(formData.email);
+            login(formData.email, formData.password);
         }, 1500); // Reduced slightly for better UX while testing
     };
 

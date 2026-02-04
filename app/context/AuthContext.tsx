@@ -16,7 +16,7 @@ export interface User {
 interface AuthContextType {
     user: User | null;
     isLoading: boolean;
-    login: (email: string) => void;
+    login: (email: string, password: string) => void;
     logout: () => void;
 }
 
@@ -36,8 +36,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
     }, []);
 
-    const login = (email: string) => {
-        const validUser = validateUser(email);
+    const login = (email: string, password: string) => {
+        const validUser = validateUser(email, password);
 
         if (validUser) {
             const newUser: User = {
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(newUser);
             router.push("/dashboard");
         } else {
-            alert("Access Denied: Email not registered in the system.");
+            alert("Login Failed: Invalid email or password.");
         }
     };
 

@@ -70,37 +70,17 @@ export const registerNewUser = (userData: any) => {
 export const validateUser = (email: string, password?: string) => {
     const users = getStoredUsers();
 
-    // 1. Exact Match
+    // 1. Exact Match with Password Check
     const foundUser = users.find((u: any) => u.email === email);
-    if (foundUser) return foundUser;
 
-    // 2. Dynamic Pattern Matching (Smart Login)
-    // Allows any email containing the product name to log in as that product admin
-    const lowerEmail = email.toLowerCase();
-    let productId = null;
-    let name = "Admin Product";
-    // Default to PRODUCT_ADMIN if matching a product pattern
-    const role = ROLES.PRODUCT_ADMIN;
-
-    if (lowerEmail.includes("joki") || lowerEmail.includes("informatika")) {
-        productId = "joki";
-        name = "Admin Joki Informatika";
-    } else if (lowerEmail.includes("catatmark")) {
-        productId = "catatmark";
-        name = "Admin Catatmark";
-    } else if (lowerEmail.includes("orbit")) {
-        productId = "orbit";
-        name = "Admin Orbit";
+    if (foundUser) {
+        // If password is provided, check it. If not, fail (or handle as needed, but for login it's required)
+        if (foundUser.password === password) {
+            return foundUser;
+        }
     }
 
-    if (productId) {
-        return {
-            email: email,
-            name: name,
-            role: role,
-            productId: productId
-        };
-    }
+    // Dynamic Pattern Matching REMOVED to enforce strict system credentials
 
     return undefined;
 };
