@@ -72,3 +72,100 @@ export const MOCK_TICKETS: Ticket[] = [
         isOverdue: false,
     },
 ];
+
+export interface ProductData {
+    id: string; // e.g., 'orbit'
+    name: string; // e.g., 'Orbit Billiard'
+    description?: string;
+    icon?: string; // URL or type
+    adminEmail?: string;
+    adminPassword?: string; // Mock only
+    trend: { name: string; tickets: number; resolved: number }[];
+    stats: { total: number; active: number; resolved: number; satisfaction: number };
+    dist: { name: string; value: number; color: string }[];
+    activity: { text: string; time: string; user: string }[];
+}
+
+export const MOCK_PRODUCTS: Record<string, ProductData> = {
+    orbit: {
+        id: "orbit",
+        name: "Orbit Billiard",
+        description: "Billiard management system",
+        adminEmail: "admin@adminorbit.co.id",
+        adminPassword: "password123",
+        trend: [
+            { name: 'Mon', tickets: 5, resolved: 4 },
+            { name: 'Tue', tickets: 8, resolved: 6 },
+            { name: 'Wed', tickets: 6, resolved: 5 },
+            { name: 'Thu', tickets: 10, resolved: 9 },
+            { name: 'Fri', tickets: 12, resolved: 10 },
+            { name: 'Sat', tickets: 4, resolved: 3 },
+            { name: 'Sun', tickets: 2, resolved: 2 },
+        ],
+        stats: { total: 120, active: 15, resolved: 105, satisfaction: 4.5 },
+        dist: [
+            { name: 'Resolved', value: 105, color: '#10B981' },
+            { name: 'In Progress', value: 10, color: '#F59E0B' },
+            { name: 'Pending', value: 5, color: '#64748B' },
+        ],
+        activity: [
+            { text: "Table 4 reservation issue resolved", time: "10 min ago", user: "Admin Orbit" },
+            { text: "New booking request #ORB-202", time: "32 min ago", user: "System" },
+            { text: "Payment gateway synced", time: "2 hrs ago", user: "Manager" }
+        ]
+    },
+    catatmark: {
+        id: "catatmark",
+        name: "Catatmark",
+        description: "Note taking and marking app",
+        adminEmail: "admin@admincatatmark.co.id",
+        adminPassword: "password123",
+        trend: [
+            { name: 'Mon', tickets: 15, resolved: 12 },
+            { name: 'Tue', tickets: 20, resolved: 18 },
+            { name: 'Wed', tickets: 18, resolved: 15 },
+            { name: 'Thu', tickets: 25, resolved: 22 },
+            { name: 'Fri', tickets: 30, resolved: 28 },
+            { name: 'Sat', tickets: 10, resolved: 8 },
+            { name: 'Sun', tickets: 8, resolved: 6 },
+        ],
+        stats: { total: 450, active: 35, resolved: 415, satisfaction: 4.8 },
+        dist: [
+            { name: 'Resolved', value: 415, color: '#10B981' },
+            { name: 'In Progress', value: 25, color: '#F59E0B' },
+            { name: 'Pending', value: 10, color: '#64748B' },
+        ],
+        activity: [
+            { text: "Sync bug on iOS fixed", time: "5 min ago", user: "Dev Team" },
+            { text: "User feedback report generated", time: "1 hr ago", user: "Admin Catatmark" },
+            { text: "New premium subscription #CM-900", time: "3 hrs ago", user: "System" }
+        ]
+    },
+    joki: {
+        id: "joki",
+        name: "Joki Informatika",
+        description: "Academic assistance platform",
+        adminEmail: "admin@adminjoki.co.id",
+        adminPassword: "password123",
+        trend: [
+            { name: 'Mon', tickets: 30, resolved: 20 },
+            { name: 'Tue', tickets: 45, resolved: 35 },
+            { name: 'Wed', tickets: 40, resolved: 30 },
+            { name: 'Thu', tickets: 50, resolved: 40 },
+            { name: 'Fri', tickets: 60, resolved: 50 },
+            { name: 'Sat', tickets: 25, resolved: 15 },
+            { name: 'Sun', tickets: 20, resolved: 15 },
+        ],
+        stats: { total: 890, active: 85, resolved: 805, satisfaction: 4.2 },
+        dist: [
+            { name: 'Resolved', value: 805, color: '#10B981' },
+            { name: 'In Progress', value: 60, color: '#F59E0B' },
+            { name: 'Pending', value: 25, color: '#64748B' },
+        ],
+        activity: [
+            { text: "Assignment help request #JK-88", time: "2 min ago", user: "Admin Joki" },
+            { text: "Tutor assigned to Ticket #JK-42", time: "15 min ago", user: "System" },
+            { text: "Refund processed for user #992", time: "4 hrs ago", user: "Finance" }
+        ]
+    }
+};

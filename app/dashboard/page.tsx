@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Header from "@/app/components/Header";
 import {
     Ticket,
@@ -55,6 +55,8 @@ const ticketTrendData7d = [
     { name: 'Sun', tickets: 5, resolved: 5 },
 ];
 
+
+
 const statusDistData = [
     { name: 'Resolved', value: 2312, color: '#10B981' },
     { name: 'In Progress', value: 128, color: '#F59E0B' },
@@ -62,74 +64,7 @@ const statusDistData = [
     { name: 'Critical', value: 12, color: '#F43F5E' },
 ];
 
-const PRODUCT_MOCK_DATA: Record<string, any> = {
-    orbit: {
-        trend: [
-            { name: 'Mon', tickets: 5, resolved: 4 },
-            { name: 'Tue', tickets: 8, resolved: 6 },
-            { name: 'Wed', tickets: 6, resolved: 5 },
-            { name: 'Thu', tickets: 10, resolved: 9 },
-            { name: 'Fri', tickets: 12, resolved: 10 },
-            { name: 'Sat', tickets: 4, resolved: 3 },
-            { name: 'Sun', tickets: 2, resolved: 2 },
-        ],
-        stats: { total: 120, active: 15, resolved: 105, satisfaction: 4.5 },
-        dist: [
-            { name: 'Resolved', value: 105, color: '#10B981' },
-            { name: 'In Progress', value: 10, color: '#F59E0B' },
-            { name: 'Pending', value: 5, color: '#64748B' },
-        ],
-        activity: [
-            { text: "Table 4 reservation issue resolved", time: "10 min ago", user: "Admin Orbit" },
-            { text: "New booking request #ORB-202", time: "32 min ago", user: "System" },
-            { text: "Payment gateway synced", time: "2 hrs ago", user: "Manager" }
-        ]
-    },
-    catatmark: {
-        trend: [
-            { name: 'Mon', tickets: 15, resolved: 12 },
-            { name: 'Tue', tickets: 20, resolved: 18 },
-            { name: 'Wed', tickets: 18, resolved: 15 },
-            { name: 'Thu', tickets: 25, resolved: 22 },
-            { name: 'Fri', tickets: 30, resolved: 28 },
-            { name: 'Sat', tickets: 10, resolved: 8 },
-            { name: 'Sun', tickets: 8, resolved: 6 },
-        ],
-        stats: { total: 450, active: 35, resolved: 415, satisfaction: 4.8 },
-        dist: [
-            { name: 'Resolved', value: 415, color: '#10B981' },
-            { name: 'In Progress', value: 25, color: '#F59E0B' },
-            { name: 'Pending', value: 10, color: '#64748B' },
-        ],
-        activity: [
-            { text: "Sync bug on iOS fixed", time: "5 min ago", user: "Dev Team" },
-            { text: "User feedback report generated", time: "1 hr ago", user: "Admin Catatmark" },
-            { text: "New premium subscription #CM-900", time: "3 hrs ago", user: "System" }
-        ]
-    },
-    joki: {
-        trend: [
-            { name: 'Mon', tickets: 30, resolved: 20 },
-            { name: 'Tue', tickets: 45, resolved: 35 },
-            { name: 'Wed', tickets: 40, resolved: 30 },
-            { name: 'Thu', tickets: 50, resolved: 40 },
-            { name: 'Fri', tickets: 60, resolved: 50 },
-            { name: 'Sat', tickets: 25, resolved: 15 },
-            { name: 'Sun', tickets: 20, resolved: 15 },
-        ],
-        stats: { total: 890, active: 85, resolved: 805, satisfaction: 4.2 },
-        dist: [
-            { name: 'Resolved', value: 805, color: '#10B981' },
-            { name: 'In Progress', value: 60, color: '#F59E0B' },
-            { name: 'Pending', value: 25, color: '#64748B' },
-        ],
-        activity: [
-            { text: "Assignment help request #JK-88", time: "2 min ago", user: "Admin Joki" },
-            { text: "Tutor assigned to Ticket #JK-42", time: "15 min ago", user: "System" },
-            { text: "Refund processed for user #992", time: "4 hrs ago", user: "Finance" }
-        ]
-    }
-};
+import { MOCK_PRODUCTS } from "@/lib/data";
 
 // Types
 interface StatsCardProps {
@@ -220,7 +155,7 @@ function ProductStatCard({ name, total, active, url }: { name: string, total: nu
 
             <div className="pt-4 border-t border-slate-50">
                 <button
-                    onClick={() => router.push(url || `/dashboard/tickets?product=${encodeURIComponent(name)}`)}
+                    onClick={() => router.push(url || `/dashboard?product=${name.toLowerCase().replace(/\s+/g, '')}`)}
                     className="w-full text-xs font-bold text-slate-500 hover:text-[#1500FF] flex items-center justify-between transition-colors group-hover:px-2"
                 >
                     View Dashboard <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 group-hover:text-[#1500FF]" />
@@ -233,13 +168,35 @@ function ProductStatCard({ name, total, active, url }: { name: string, total: nu
 import { useAuth } from "../context/AuthContext";
 // ... imports
 
-export default function SuperAdminDashboard() {
+
+function DashboardContent() {
     const router = useRouter();
     const { user } = useAuth();
     const [greeting, setGreeting] = useState("Welcome back");
     const [filterRange, setFilterRange] = useState<"30d" | "7d">("30d");
 
-    const productData = user?.productId ? PRODUCT_MOCK_DATA[user.productId] : null;
+    const searchParams = useSearchParams();
+    const productIdParam = searchParams.get('product');
+
+    // Combine Mock Data with potentially LocalStorage data (simplified here to just use Mock for now, 
+    // real implementation would load from Context or LS in a useEffect)
+    const [products, setProducts] = useState(MOCK_PRODUCTS);
+
+    useEffect(() => {
+        const stored = localStorage.getItem('products');
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                setProducts(prev => ({ ...prev, ...parsed }));
+            } catch (e) { console.error("Failed to load products", e); }
+        }
+    }, []);
+
+    // Determine which product data to show.
+    // 1. If 'product' param exists, try to find it.
+    // 2. If 'user.productId' exists (and not SUPER_ADMIN viewing all), use that.
+    const effectiveProductId = productIdParam || user?.productId;
+    const productData = effectiveProductId ? products[effectiveProductId] : null;
 
     const currentTrendData = productData
         ? productData.trend
@@ -288,10 +245,11 @@ export default function SuperAdminDashboard() {
 
                 {/* 1. Key Metrics */}
                 <section>
-                    {user?.role === 'PRODUCT_ADMIN' && user?.productId && (
+                    {(effectiveProductId || (user?.role === 'PRODUCT_ADMIN' && user?.productId)) && (
                         <motion.div variants={itemVariants as any} className="mb-6 p-4 bg-[#1500FF]/5 border border-[#1500FF]/20 rounded-xl flex items-center gap-3 text-[#1500FF]">
                             <Package size={20} />
-                            <span className="font-bold text-sm">Viewing Dashboard for Product: <span className="uppercase">{user.productId}</span></span>
+                            <span className="font-bold text-sm">Viewing Dashboard for Product: <span className="uppercase">{productData?.name || effectiveProductId}</span></span>
+                            {productIdParam && <button onClick={() => router.push('/dashboard')} className="ml-auto text-xs font-bold underline hover:no-underline">Back to Overview</button>}
                         </motion.div>
                     )}
                     <motion.div variants={itemVariants as any} className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
@@ -420,13 +378,18 @@ export default function SuperAdminDashboard() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {user?.role === 'SUPER_ADMIN' ? (
                                 <>
-                                    <ProductStatCard name="Catatmark" total={850} active={42} />
-                                    <ProductStatCard name="Joki Informatika" total={1240} active={85} />
-                                    <ProductStatCard name="Orbit Billiard" total={453} active={24} />
+                                    {Object.values(products).map((prod: any) => (
+                                        <ProductStatCard
+                                            key={prod.id}
+                                            name={prod.name}
+                                            total={prod.stats.total}
+                                            active={prod.stats.active}
+                                        />
+                                    ))}
 
                                     <motion.div
                                         variants={itemVariants as any}
-                                        onClick={() => router.push('/dashboard/products/create')}
+                                        onClick={() => router.push('/dashboard/products')}
                                         className="border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-8 text-slate-400 hover:border-[#1500FF]/40 hover:text-[#1500FF] hover:bg-[#1500FF]/5 transition-all cursor-pointer min-h-[200px] group"
                                     >
                                         <div className="p-4 bg-slate-50 rounded-full mb-3 group-hover:bg-white transition-colors group-hover:shadow-md group-hover:shadow-[#1500FF]/20">
@@ -504,5 +467,15 @@ export default function SuperAdminDashboard() {
 
             </motion.main>
         </div>
+    );
+}
+
+import { Suspense } from 'react';
+
+export default function SuperAdminDashboard() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center text-slate-400">Loading Dashboard...</div>}>
+            <DashboardContent />
+        </Suspense>
     );
 }
