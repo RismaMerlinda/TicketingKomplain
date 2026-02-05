@@ -162,21 +162,22 @@ export default function ProductsPage() {
     };
 
     const handleDeleteProduct = (id: string) => {
+        const productName = products[id]?.name || id;
+
         setProducts(prev => {
             const updated = { ...prev };
-            const productName = updated[id]?.name || id;
             delete updated[id];
             localStorage.setItem('products', JSON.stringify(updated));
-
-            // Log Activity
-            logActivity(
-                `Deleted product: ${productName}`,
-                user?.name || "Super Admin",
-                id
-            );
-
             return updated;
         });
+
+        // Log Activity
+        logActivity(
+            `Deleted product: ${productName}`,
+            user?.name || "Super Admin",
+            id
+        );
+
         setIsEditModalOpen(false);
         setDeleteModal({ isOpen: false, productId: null });
     };
