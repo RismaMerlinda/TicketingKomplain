@@ -5,7 +5,7 @@
 export interface TicketData {
     id: string;
     code: string;
-    status: "New" | "In Progress" | "Pending" | "Overdue" | "Done" | "Closed";
+    status: "New" | "In Progress" | "Pending" | "Overdue" | "Done" | "Closed" | "Resolved";
     title: string;
     description?: string;
     product: string;
@@ -36,7 +36,6 @@ const mapMockTicket = (t: any): TicketData => ({
     createdAt: t.createdAt + " · 00:00",
     customer: t.customerName || "Customer"
 });
-
 export const MOCK_TICKETS: TicketData[] = [
     {
         id: "1",
@@ -154,6 +153,7 @@ export const MOCK_TICKETS: TicketData[] = [
     },
 ];
 
+
 export const getStoredTickets = (): TicketData[] => {
     if (typeof window === 'undefined') return [];
 
@@ -163,7 +163,13 @@ export const getStoredTickets = (): TicketData[] => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_TICKETS));
         return MOCK_TICKETS;
     }
-    return JSON.parse(stored);
+    try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length === 0) return MOCK_TICKETS;
+        return parsed;
+    } catch (e) {
+        return MOCK_TICKETS;
+    }
 };
 
 export const saveTickets = (tickets: TicketData[]) => {
@@ -186,3 +192,4 @@ export const deleteTicket = (id: string) => {
     const tickets = getStoredTickets();
     saveTickets(tickets.filter(t => t.id !== id));
 };
+

@@ -53,6 +53,7 @@ interface ReportTicketData {
     responseTime: number; // in hours
 }
 
+
 export default function ReportsPage() {
     const { user } = useAuth();
     const [productFilter, setProductFilter] = useState<string>("all");

@@ -44,7 +44,7 @@ import { logActivity } from "@/lib/activity";
 import { getStoredTickets, addTicket, updateTicket, deleteTicket, TicketData, MOCK_TICKETS } from "@/lib/tickets";
 
 // --- Types ---
-type TicketStatus = "New" | "In Progress" | "Pending" | "Overdue" | "Done" | "Closed";
+type TicketStatus = "New" | "In Progress" | "Pending" | "Overdue" | "Done" | "Closed" | "Resolved";
 type TicketPriority = "High" | "Medium" | "Low";
 type TicketSource = "WhatsApp" | "Instagram" | "Facebook" | "X" | "Website" | "Email" | "App / In-App" | "Offline / Manual" | "Other";
 type ViewMode = "GRID" | "LIST" | "TABLE";
@@ -57,7 +57,8 @@ const getStatusStyles = (status: TicketStatus) => {
         case "In Progress": return { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-100", icon: Clock, accent: "bg-amber-500" };
         case "Pending": return { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200", icon: MoreHorizontal, accent: "bg-slate-400" };
         case "Overdue": return { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-100", icon: AlertCircle, accent: "bg-indigo-600" };
-        case "Done": return { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100", icon: CheckCircle2, accent: "bg-emerald-500" };
+        case "Done":
+        case "Resolved": return { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100", icon: CheckCircle2, accent: "bg-emerald-500" };
         case "Closed": return { bg: "bg-slate-100", text: "text-slate-400", border: "border-slate-200", icon: XCircle, accent: "bg-slate-300" };
     }
 };
@@ -345,12 +346,7 @@ export default function TicketsPage() {
     useEffect(() => {
         const loadTickets = () => {
             const stored = getStoredTickets();
-            if (stored.length === 0) {
-                localStorage.setItem('ticketing_tickets', JSON.stringify(MOCK_TICKETS));
-                setTickets(MOCK_TICKETS);
-            } else {
-                setTickets(stored);
-            }
+            setTickets(stored);
         };
 
         const loadProducts = () => {
@@ -586,7 +582,7 @@ export default function TicketsPage() {
                 {/* 2. Filters Row */}
                 <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
                     <FilterTab label="All Tickets" isActive={activeTab === "All"} onClick={() => setActiveTab("All")} count={roleFilteredTickets.length} />
-                    {(["New", "In Progress", "Pending", "Overdue", "Done", "Closed"] as TicketStatus[]).map(s => (
+                    {(["New", "In Progress", "Pending", "Overdue", "Done", "Resolved", "Closed"] as TicketStatus[]).map(s => (
                         <FilterTab key={s} label={s} isActive={activeTab === s} onClick={() => setActiveTab(s)} count={roleFilteredTickets.filter(t => t.status === s).length} />
                     ))}
                 </div>

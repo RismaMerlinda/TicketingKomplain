@@ -10,6 +10,7 @@ import { ROLES } from "@/lib/auth";
 import { useAuth } from "../../context/AuthContext";
 import { logActivity } from "@/lib/activity";
 import ConfirmModal from "@/app/components/ConfirmModal";
+import { getStoredTickets } from "@/lib/tickets";
 
 // Type extension for editable fields if needed, or just use ProductData
 interface ProductForm extends ProductData {
@@ -19,6 +20,7 @@ interface ProductForm extends ProductData {
 export default function ProductsPage() {
     const router = useRouter();
     const [products, setProducts] = useState<Record<string, ProductData>>(MOCK_PRODUCTS);
+    const [tickets, setTickets] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
 
     // Modal State
@@ -41,7 +43,6 @@ export default function ProductsPage() {
 
     useEffect(() => {
         // Load from local storage if strictly necessary, but for now we sync from MOCK_PRODUCTS 
-        // In a real app, this would fetch from API
         const stored = localStorage.getItem('products');
         if (stored) {
             try {
@@ -50,6 +51,15 @@ export default function ProductsPage() {
                 console.error("Failed to load products", e);
             }
         }
+
+        // Load tickets for dynamic stats
+        const loadTickets = () => {
+            const t = getStoredTickets();
+            setTickets(t);
+        };
+        loadTickets();
+        window.addEventListener('ticketsUpdated', loadTickets);
+        return () => window.removeEventListener('ticketsUpdated', loadTickets);
     }, []);
 
     const { user } = useAuth();
@@ -240,14 +250,23 @@ export default function ProductsPage() {
                                     <p className="text-sm text-slate-400 line-clamp-2 mb-4">{product.description || "No description provided."}</p>
 
                                     <div className="grid grid-cols-2 gap-4 mb-6">
-                                        <div className="p-3 bg-slate-50 rounded-xl">
-                                            <p className="text-[10px] uppercase text-slate-400 font-bold mb-1">Tickets</p>
-                                            <p className="font-extrabold text-slate-700">{product.stats.total}</p>
-                                        </div>
-                                        <div className="p-3 bg-slate-50 rounded-xl border border-transparent group-hover:border-[#1500FF]/10 group-hover:bg-[#1500FF]/5 transition-colors">
-                                            <p className="text-[10px] uppercase text-slate-400 font-bold mb-1 group-hover:text-[#1500FF]">Active</p>
-                                            <p className="font-extrabold text-slate-700 group-hover:text-[#1500FF]">{product.stats.active}</p>
-                                        </div>
+                                        {(() => {
+                                            const pTickets = tickets.filter(t => t.product === product.name);
+                                            const pTotal = pTickets.length;
+                                            const pActive = pTickets.filter(t => ['New', 'In Progress', 'Pending', 'Overdue'].includes(t.status)).length;
+                                            return (
+                                                <>
+                                                    <div className="p-3 bg-slate-50 rounded-xl">
+                                                        <p className="text-[10px] uppercase text-slate-400 font-bold mb-1">Tickets</p>
+                                                        <p className="font-extrabold text-slate-700">{pTotal}</p>
+                                                    </div>
+                                                    <div className="p-3 bg-slate-50 rounded-xl border border-transparent group-hover:border-[#1500FF]/10 group-hover:bg-[#1500FF]/5 transition-colors">
+                                                        <p className="text-[10px] uppercase text-slate-400 font-bold mb-1 group-hover:text-[#1500FF]">Active</p>
+                                                        <p className="font-extrabold text-slate-700 group-hover:text-[#1500FF]">{pActive}</p>
+                                                    </div>
+                                                </>
+                                            )
+                                        })()}
                                     </div>
                                 </div>
 
@@ -267,7 +286,7 @@ export default function ProductsPage() {
                         <motion.div
                             onClick={handleAddClick}
                             whileHover={{ scale: 1.02 }}
-                            className="cursor-pointer border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-8 text-slate-400 hover:border-[#1500FF]/40 hover:text-[#1500FF] hover:bg-[#1500FF]/5 transition-all min-h-[350px]"
+                            className="cursor-pointer border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-8 text-slate-400 hover:border-[#1500FF]/40 hover:text-[#1500FF] hover:bg-[#1500FF]/5 transition-all h-full min-h-[300px]"
                         >
                             <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4 group-hover:bg-white border border-transparent group-hover:border-[#1500FF]/20 shadow-sm transition-all">
                                 <Plus size={32} />
