@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useMemo } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import Header from "@/app/components/Header";

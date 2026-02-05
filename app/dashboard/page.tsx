@@ -31,7 +31,7 @@ import {
     Cell,
 } from "recharts";
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 
 // Mock Data
 // Mock Data
@@ -507,7 +507,7 @@ function DashboardContent() {
     );
 }
 
-import { Suspense } from 'react';
+
 
 export default function SuperAdminDashboard() {
     return (
