@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { Mail, Lock, LogIn, User, Eye, EyeOff, KeyRound } from "lucide-react";
+import ConfirmModal from "@/app/components/ConfirmModal";
 
 // --- Components ---
 
@@ -13,24 +14,22 @@ const TechBackground = () => (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 bg-blue-900" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:50px_50px] opacity-30" />
-        <div className="absolute inset-0 bg-gradient-to-t from-blue-950 via-transparent to-blue-900 opacity-80" />
     </div>
 );
 
 export default function LoginPage() {
     const { login } = useAuth();
     const router = useRouter(); // Keep for now in case
-    const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [formData, setFormData] = useState({ email: "", password: "" });
+    const [showLoginError, setShowLoginError] = useState(false);
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
-        // Professional simulation delay for high-security verification atmosphere
-        setTimeout(() => {
-            login(formData.email, formData.password);
-        }, 1500); // Reduced slightly for better UX while testing
+        const success = login(formData.email, formData.password);
+        if (!success) {
+            setShowLoginError(true);
+        }
     };
 
     return (
@@ -50,7 +49,6 @@ export default function LoginPage() {
                 {/* The "Timbul & Cerah" Premium Card */}
                 <div className="relative w-full">
                     {/* Subtle Outer Glow */}
-                    <div className="absolute -inset-0.5 bg-gradient-to-br from-white/30 to-blue-500/10 rounded-[3rem] blur-2xl opacity-60" />
 
                     <div className="relative bg-[#FDFEFE] border border-white rounded-[3rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] p-10 md:pt-10 md:pb-14 md:px-14 overflow-hidden">
 
@@ -60,7 +58,7 @@ export default function LoginPage() {
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
                                 transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.3 }}
-                                className="w-24 h-24 bg-gradient-to-br from-blue-50 to-white rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-[0_20px_45px_-5px_rgba(46,169,255,0.2)] border border-blue-100"
+                                className="w-24 h-24 bg-blue-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-sm border border-blue-100"
                             >
                                 <div className="relative">
                                     <User className="text-blue-500" size={48} />
@@ -69,7 +67,7 @@ export default function LoginPage() {
                                     </div>
                                 </div>
                             </motion.div>
-                            <h1 className="text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#0A1332] to-[#2563EB] mb-3">
+                            <h1 className="text-4xl font-black tracking-tight text-[#0A1332] mb-3">
                                 Welcome
                             </h1>
                             <p className="text-slate-500 text-sm font-medium">
@@ -123,37 +121,27 @@ export default function LoginPage() {
 
                             {/* Login Button - PREMIUM ENHANCED */}
                             <button
-                                disabled={isLoading}
-                                className="w-full bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] hover:from-[#1E40AF] hover:to-[#3B82F6] text-white font-black py-5 rounded-2xl shadow-[0_10px_25px_-5px_rgba(30,58,138,0.4)] hover:shadow-[0_15px_35px_-8px_rgba(30,58,138,0.5)] transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-75 mt-8 group/btn overflow-hidden relative font-sans border-b-4 border-blue-900/50"
+                                className="w-full bg-[#1E3A8A] hover:bg-slate-900 text-white font-black py-5 rounded-2xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-8 group/btn overflow-hidden relative font-sans border-b-4 border-blue-900/50"
                             >
-                                <AnimatePresence mode="wait">
-                                    {isLoading ? (
-                                        <motion.div
-                                            key="loading"
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            className="flex items-center gap-4"
-                                        >
-                                            <div className="w-7 h-7 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                                        </motion.div>
-                                    ) : (
-                                        <motion.div
-                                            key="content"
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            className="flex items-center gap-2"
-                                        >
-                                            <span className="uppercase text-[14px]">Login</span>
-                                            <LogIn size={20} className="group-hover:translate-x-2 transition-transform text-cyan-400" />
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 -translate-x-full group-hover:animate-shimmer" />
+                                <div className="flex items-center gap-2">
+                                    <span className="uppercase text-[14px]">Login</span>
+                                    <LogIn size={20} className="group-hover:translate-x-2 transition-transform text-cyan-400" />
+                                </div>
                             </button>
                         </form>
                     </div>
                 </div>
             </motion.div>
+
+            <ConfirmModal
+                isOpen={showLoginError}
+                onClose={() => setShowLoginError(false)}
+                onConfirm={() => setShowLoginError(false)}
+                title="Login Failed"
+                message="The email or password you entered is incorrect. Please check your credentials and try again."
+                confirmText="Try Again"
+                variant="warning"
+            />
         </div>
     );
 }

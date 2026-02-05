@@ -97,7 +97,6 @@ function StatsCard({ title, value, icon, trend, trendUp }: StatsCardProps) {
     return (
         <motion.div variants={itemVariants as any} className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] transition-all duration-300 group hover:-translate-y-1 relative overflow-hidden">
             {/* Subtle background shine */}
-            <div className="absolute -right-6 -top-6 w-24 h-24 bg-gradient-to-br from-slate-50 to-transparent rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500 ease-out" />
 
             <div className="flex items-start justify-between mb-6 relative z-10">
                 <div className="p-3.5 rounded-2xl bg-slate-50 text-slate-400 group-hover:text-white group-hover:bg-[#1500FF] transition-all duration-300 shadow-sm border border-slate-100 group-hover:border-transparent group-hover:shadow-[#1500FF]/30">
@@ -111,7 +110,7 @@ function StatsCard({ title, value, icon, trend, trendUp }: StatsCardProps) {
                 )}
             </div>
             <div className="relative z-10">
-                <h3 className="text-4xl font-extrabold tracking-tighter bg-gradient-to-br from-slate-800 to-slate-500 bg-clip-text text-transparent group-hover:from-[#1500FF] group-hover:to-[#6366f1] transition-all duration-300">
+                <h3 className="text-4xl font-extrabold tracking-tighter text-slate-800 group-hover:text-[#1500FF] transition-all duration-300">
                     {value}
                 </h3>
                 <p className="text-[11px] uppercase tracking-wider text-slate-400 font-bold mt-2">{title}</p>
@@ -145,11 +144,11 @@ function ProductStatCard({ name, total, active, url }: { name: string, total: nu
             <div className="grid grid-cols-2 gap-6 my-6">
                 <div>
                     <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Total Tickets</p>
-                    <p className="text-2xl font-extrabold text-slate-700 bg-gradient-to-br from-slate-700 to-slate-500 bg-clip-text text-transparent">{total}</p>
+                    <p className="text-2xl font-extrabold text-slate-700">{total}</p>
                 </div>
                 <div>
                     <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Active Issues</p>
-                    <p className="text-2xl font-extrabold text-[#1500FF] bg-gradient-to-br from-[#1500FF] to-[#6366f1] bg-clip-text text-transparent">{active}</p>
+                    <p className="text-2xl font-extrabold text-[#1500FF]">{active}</p>
                 </div>
             </div>
 
@@ -166,7 +165,8 @@ function ProductStatCard({ name, total, active, url }: { name: string, total: nu
 }
 
 import { useAuth } from "../context/AuthContext";
-// ... imports
+import { getStoredLogs, formatRelativeTime } from "@/lib/activity";
+import { ROLES } from "@/lib/auth";
 
 
 function DashboardContent() {
@@ -174,6 +174,30 @@ function DashboardContent() {
     const { user } = useAuth();
     const [greeting, setGreeting] = useState("Welcome back");
     const [filterRange, setFilterRange] = useState<"30d" | "7d">("30d");
+    const [activities, setActivities] = useState<any[]>([]);
+    const [timeTick, setTimeTick] = useState(Date.now());
+
+    useEffect(() => {
+        const timer = setInterval(() => setTimeTick(Date.now()), 60000);
+        return () => clearInterval(timer);
+    }, []);
+
+    useEffect(() => {
+        const refresh = () => {
+            const allLogs = getStoredLogs();
+            const filtered = allLogs.filter((log: any) => {
+                if (user?.role === ROLES.PRODUCT_ADMIN && user?.productId) {
+                    return log.product === user.productId;
+                }
+                return true;
+            });
+            setActivities(filtered.slice(0, 5));
+        };
+
+        refresh();
+        window.addEventListener('activityUpdated', refresh);
+        return () => window.removeEventListener('activityUpdated', refresh);
+    }, [user]);
 
     const searchParams = useSearchParams();
     const productIdParam = searchParams.get('product');
@@ -204,11 +228,9 @@ function DashboardContent() {
 
     const currentDistData = productData ? productData.dist : statusDistData;
     const stats = productData ? productData.stats : null;
-    const activityFeed = productData ? productData.activity : [
-        { text: "Ticket #2942 resolved", time: "2 min ago", user: "Admin Joki" },
-        { text: "New report generated", time: "15 min ago", user: "System" },
-        { text: "User added to Orbit", time: "1 hr ago", user: "Super Admin" }
-    ];
+    const activityFeed = activities.length > 0 ? activities : (productData ? productData.activity : [
+        { text: "System Online", time: "Stable", user: "System" }
+    ]);
 
     useEffect(() => {
         const updateGreeting = () => {
@@ -449,17 +471,32 @@ function DashboardContent() {
                                 </div>
                             </div>
                             <div className="relative border-l border-slate-100 ml-2 space-y-8 pb-2">
-                                {activityFeed.map((item: any, i: number) => (
-                                    <div key={i} className="pl-8 relative group cursor-pointer hover:-translate-x-[-4px] transition-transform duration-200">
-                                        <div className="absolute -left-[5px] top-1.5 w-[9px] h-[9px] rounded-full border-2 border-white bg-slate-300 group-hover:bg-[#1500FF] transition-colors ring-1 ring-slate-100 group-hover:ring-[#1500FF]/30 shadow-sm" />
-                                        <p className="text-sm text-slate-600 font-bold group-hover:text-slate-900 transition-colors leading-relaxed">{item.text}</p>
-                                        <div className="flex items-center gap-3 mt-1.5">
-                                            <span className="text-[11px] text-slate-400 font-semibold">{item.time}</span>
-                                            <span className="w-0.5 h-3 bg-slate-200" />
-                                            <span className="text-[11px] text-slate-400 font-semibold">{item.user}</span>
+                                {activityFeed.map((item: any, i: number) => {
+                                    const t = item.text.toLowerCase();
+                                    let dotColor = "bg-slate-300";
+
+                                    if (t.includes('pending')) dotColor = "bg-gray-500";
+                                    else if (t.includes('closed')) dotColor = "bg-slate-950";
+                                    else if (t.includes('done') || t.includes('resolved') || t.includes('completed')) dotColor = "bg-emerald-500";
+                                    else if (t.includes('created') || t.includes('new')) dotColor = "bg-blue-500";
+                                    else if (t.includes('progress') || t.includes('in progress')) dotColor = "bg-amber-500";
+                                    else if (t.includes('updated') || t.includes('changed') || t.includes('modify')) dotColor = "bg-indigo-500";
+                                    else if (t.includes('deleted') || t.includes('removed')) dotColor = "bg-rose-500";
+
+                                    return (
+                                        <div key={i} className="pl-8 relative group cursor-pointer hover:-translate-x-[-4px] transition-transform duration-200">
+                                            <div className={`absolute -left-[5px] top-1.5 w-[9px] h-[9px] rounded-full border-2 border-white ${dotColor} transition-colors ring-1 ring-slate-100 group-hover:ring-[#1500FF]/30 shadow-sm`} />
+                                            <p className="text-sm text-slate-600 font-bold group-hover:text-slate-900 transition-colors leading-relaxed">{item.text}</p>
+                                            <div className="flex items-center gap-3 mt-1.5">
+                                                <span className="text-[11px] text-slate-400 font-bold uppercase tracking-tight">
+                                                    {item.timestamp ? formatRelativeTime(item.timestamp) : item.time}
+                                                </span>
+                                                <span className="w-0.5 h-3 bg-slate-200" />
+                                                <span className="text-[11px] text-slate-400 font-bold">{item.user}</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </motion.section>
                     </div>

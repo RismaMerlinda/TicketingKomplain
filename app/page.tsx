@@ -11,7 +11,6 @@ const TechBackground = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
     <div className="absolute inset-0 bg-blue-900" />
     <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:50px_50px] opacity-30" />
-    <div className="absolute inset-0 bg-gradient-to-t from-blue-950 via-transparent to-blue-900 opacity-80" />
   </div>
 );
 
@@ -116,7 +115,6 @@ export default function LandingPage() {
                 initial={{ x: "-100%" }}
                 animate={{ x: "200%" }}
                 transition={{ duration: 0.5 }}
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12 z-20"
               />
             )}
           </AnimatePresence>
@@ -196,16 +194,13 @@ export default function LandingPage() {
           {/* Progress Bar */}
           <div className="w-full h-2 bg-blue-950/40 rounded-full overflow-hidden border border-blue-400/20 shadow-inner mt-4">
             <motion.div
-              className="h-full bg-gradient-to-r from-blue-600 via-cyan-400 to-white relative"
+              className="h-full bg-blue-600 relative"
               initial={{ width: "0%" }}
               animate={{ width: `${progress}%` }}
               transition={{ ease: "easeOut", duration: 0.1 }}
             >
               {/* Animated Shine Effect */}
               <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent w-full h-full"
-                animate={{ x: ['-100%', '100%'] }}
-                transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
               />
             </motion.div>
           </div>

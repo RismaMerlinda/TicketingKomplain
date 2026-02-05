@@ -1,4 +1,4 @@
-export type Product = "Catatmark" | "Joki Informatika" | "Orbit Billiard";
+export type Product = "Catatmak" | "Joki Informatika" | "Orbit Billiard";
 export type Status = "New" | "In Progress" | "Pending" | "Done";
 export type Priority = "Low" | "Medium" | "High";
 export type Source = "WA" | "IG" | "Email" | "Website" | "Other";
@@ -22,7 +22,7 @@ export const MOCK_TICKETS: Ticket[] = [
     {
         id: "1",
         code: "TKT-001",
-        product: "Catatmark",
+        product: "Catatmak",
         source: "WA",
         title: "Gagal login di web admin",
         description: "User melaporkan tidak bisa login meskipun password sudah benar.",
@@ -61,7 +61,7 @@ export const MOCK_TICKETS: Ticket[] = [
     {
         id: "4",
         code: "TKT-004",
-        product: "Catatmark",
+        product: "Catatmak",
         source: "IG",
         title: "Pertanyaan fitur baru",
         description: "User menanyakan kapan fitur laporan bulanan dirilis.",
@@ -114,11 +114,11 @@ export const MOCK_PRODUCTS: Record<string, ProductData> = {
             { text: "Payment gateway synced", time: "2 hrs ago", user: "Manager" }
         ]
     },
-    catatmark: {
-        id: "catatmark",
-        name: "Catatmark",
+    catatmak: {
+        id: "catatmak",
+        name: "Catatmak",
         description: "Note taking and marking app",
-        adminEmail: "admin@admincatatmark.co.id",
+        adminEmail: "admin@admincatatmak.co.id",
         adminPassword: "password123",
         trend: [
             { name: 'Mon', tickets: 15, resolved: 12 },

@@ -35,7 +35,7 @@ export const navConfig = {
             roles: [ROLES.SUPER_ADMIN]
         },
         {
-            title: "Admin Produk",
+            title: "Product Admins",
             href: "/dashboard/admins",
             icon: Users,
             roles: [ROLES.SUPER_ADMIN]
@@ -47,7 +47,7 @@ export const navConfig = {
             roles: [ROLES.SUPER_ADMIN, ROLES.PRODUCT_ADMIN]
         },
         {
-            title: "Activity Log",
+            title: "Activity Logs",
             href: "/dashboard/activity",
             icon: Activity,
             roles: [ROLES.SUPER_ADMIN]

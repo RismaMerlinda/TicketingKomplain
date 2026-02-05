@@ -12,12 +12,15 @@ import {
     Activity,
     UserCircle,
     LogOut,
-    Layers
+    Layers,
+    User
 } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/AuthContext";
 // @ts-ignore
 import { navConfig } from "@/navConfig";
+import { useState } from "react";
+import ConfirmModal from "./ConfirmModal";
 
 // Helper for conditional classes
 function cx(...classes: (string | undefined | null | false)[]) {
@@ -28,6 +31,7 @@ export default function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname();
     const { close } = useSidebar();
     const { user, logout } = useAuth();
+    const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
     // Filter Logic
     const filteredMainMenu = navConfig.mainMenu.filter((item: any) =>
@@ -64,87 +68,83 @@ export default function Sidebar({ className }: { className?: string }) {
             </div>
 
             {/* Menu */}
-            <nav className="flex-1 px-6 space-y-8 overflow-y-auto mt-2 scrollbar-hide">
+            <nav className="flex-1 px-6 space-y-1 overflow-y-auto mt-2 scrollbar-hide">
 
                 {/* Main Menu */}
-                <div>
-                    <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest px-3 mb-3">Main Menu</div>
-                    <div className="space-y-1">
-                        {filteredMainMenu.map((item: any) => {
-                            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                {filteredMainMenu.map((item: any) => {
+                    const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
-                            return (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    onClick={close}
-                                    className={cx(
-                                        "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group relative",
-                                        isActive
-                                            ? "bg-[#1500FF]/5 text-[#1500FF] font-bold"
-                                            : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 font-medium"
-                                    )}
-                                >
-                                    <item.icon
-                                        size={20}
-                                        strokeWidth={isActive ? 2.5 : 2}
-                                        className={cx(
-                                            "transition-colors",
-                                            isActive ? "text-[#1500FF]" : "text-slate-400 group-hover:text-slate-600"
-                                        )}
-                                    />
-                                    <span className="text-[13px] tracking-wide">{item.title}</span>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                </div>
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={close}
+                            className={cx(
+                                "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group relative",
+                                isActive
+                                    ? "bg-[#1500FF]/5 text-[#1500FF] font-bold"
+                                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 font-medium"
+                            )}
+                        >
+                            <item.icon
+                                size={20}
+                                strokeWidth={isActive ? 2.5 : 2}
+                                className={cx(
+                                    "transition-colors",
+                                    isActive ? "text-[#1500FF]" : "text-slate-400 group-hover:text-slate-600"
+                                )}
+                            />
+                            <span className="text-[13px] tracking-wide">{item.title}</span>
+                        </Link>
+                    );
+                })}
 
                 {/* Management Menu */}
-                <div>
-                    <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest px-3 mb-3">Management</div>
-                    <div className="space-y-1">
-                        {filteredManagementMenu.map((item) => {
-                            const isActive = pathname.startsWith(item.href);
-                            return (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    onClick={close}
-                                    className={cx(
-                                        "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group relative",
-                                        isActive
-                                            ? "bg-[#1500FF]/5 text-[#1500FF] font-bold"
-                                            : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 font-medium"
-                                    )}
-                                >
-                                    <item.icon
-                                        size={20}
-                                        strokeWidth={isActive ? 2.5 : 2}
-                                        className={cx(
-                                            "transition-colors",
-                                            isActive ? "text-[#1500FF]" : "text-slate-400 group-hover:text-slate-600"
-                                        )}
-                                    />
-                                    <span className="text-[13px] tracking-wide">{item.title}</span>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                </div>
+                {filteredManagementMenu.map((item) => {
+                    const isActive = pathname.startsWith(item.href);
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={close}
+                            className={cx(
+                                "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group relative",
+                                isActive
+                                    ? "bg-[#1500FF]/5 text-[#1500FF] font-bold"
+                                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 font-medium"
+                            )}
+                        >
+                            <item.icon
+                                size={20}
+                                strokeWidth={isActive ? 2.5 : 2}
+                                className={cx(
+                                    "transition-colors",
+                                    isActive ? "text-[#1500FF]" : "text-slate-400 group-hover:text-slate-600"
+                                )}
+                            />
+                            <span className="text-[13px] tracking-wide">{item.title}</span>
+                        </Link>
+                    );
+                })}
 
             </nav>
 
             {/* User Mini Profile */}
             <div className="p-6 flex-shrink-0">
                 <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                    <div className="flex items-center gap-3 w-full mb-3">
-                        <div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-sm font-extrabold text-[#1500FF] shadow-sm">
-                            {user?.name?.substring(0, 2).toUpperCase() || 'US'}
+                    <div className="flex items-center gap-4 group mb-4">
+                        <div className="w-12 h-12 rounded-[1.2rem] bg-[#1500FF]/5 overflow-hidden flex items-center justify-center p-0.5 border border-slate-100 group-hover:border-[#1500FF]/20 transition-all">
+                            {user?.avatar ? (
+                                <img src={user.avatar} alt="Profile" className="w-full h-full object-cover rounded-[1rem]" />
+                            ) : (
+                                <div className="w-full h-full rounded-[1rem] bg-[#1500FF] flex items-center justify-center text-white">
+                                    <User size={20} />
+                                </div>
+                            )}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <div className="text-sm font-bold text-slate-800 truncate">{user?.name || 'User'}</div>
-                            <div className="text-[11px] text-slate-500 truncate font-medium">{user?.email || 'user@email.com'}</div>
+                            <p className="text-sm font-black text-slate-800 truncate tracking-tight">{user?.name || "Member"}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.role?.replace('_', ' ') || "Admin"}</p>
                         </div>
                     </div>
 
@@ -157,14 +157,25 @@ export default function Sidebar({ className }: { className?: string }) {
                             <UserCircle size={14} /> Profile
                         </Link>
                         <button
-                            onClick={logout}
-                            className="flex items-center justify-center gap-2 py-2 rounded-lg text-[11px] font-bold text-rose-600 bg-white border border-slate-200 hover:bg-rose-50 hover:border-rose-200 transition-all"
+                            onClick={() => setIsLogoutConfirmOpen(true)}
+                            className="flex items-center justify-center gap-2 py-2 rounded-lg text-[11px] font-bold text-rose-600 bg-white border border-slate-200 hover:bg-rose-50 hover:border-rose-200 transition-all font-sans"
                         >
                             <LogOut size={14} /> Logout
                         </button>
                     </div>
                 </div>
             </div>
+
+            <ConfirmModal
+                isOpen={isLogoutConfirmOpen}
+                onClose={() => setIsLogoutConfirmOpen(false)}
+                onConfirm={logout}
+                title="Are you sure?"
+                message="You will be logged out of your dashboard session. Any unsaved changes might be lost."
+                confirmText="Yes, Logout"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </aside>
     );
 }

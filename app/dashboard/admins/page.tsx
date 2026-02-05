@@ -6,6 +6,9 @@ import { Users, Plus, Search, Mail, Key, X, Save, Shield, MoreHorizontal, Trash2
 import { motion, AnimatePresence } from "framer-motion";
 import { MOCK_PRODUCTS } from "@/lib/data";
 import { ROLES, getStoredUsers } from "@/lib/auth";
+import ConfirmModal from "@/app/components/ConfirmModal";
+import { useAuth } from "../../context/AuthContext";
+import { logActivity } from "@/lib/activity";
 
 export default function AdminsPage() {
     const [users, setUsers] = useState<any[]>([]);
@@ -15,6 +18,10 @@ export default function AdminsPage() {
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<any>(null); // If null, we are adding new
+    const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; type: "delete" | "error"; data?: any }>({
+        isOpen: false,
+        type: "delete"
+    });
 
     // Form State
     const [formData, setFormData] = useState({
@@ -64,7 +71,11 @@ export default function AdminsPage() {
         } else {
             // Add New
             if (newUsers.find(u => u.email === formData.email)) {
-                alert("User with this email already exists!");
+                setConfirmModal({
+                    isOpen: true,
+                    type: "error",
+                    data: "User with this email already exists!"
+                });
                 return;
             }
             newUsers.push({
@@ -78,16 +89,31 @@ export default function AdminsPage() {
 
         setUsers(newUsers);
         localStorage.setItem('ticketing_users', JSON.stringify(newUsers));
+
+        // Log Activity
+        logActivity(
+            editingUser ? `Updated administrator: ${formData.name}` : `Added new administrator: ${formData.name}`,
+            currentUser?.name || "Super Admin",
+            formData.productId || null
+        );
+
         closeModal();
     };
 
     const handleDeleteUser = (email: string) => {
-        if (confirm(`Delete user ${email}?`)) {
-            const newUsers = users.filter(u => u.email !== email);
-            setUsers(newUsers);
-            localStorage.setItem('ticketing_users', JSON.stringify(newUsers));
-            closeModal();
-        }
+        const userToDelete = users.find(u => u.email === email);
+        const newUsers = users.filter(u => u.email !== email);
+        setUsers(newUsers);
+        localStorage.setItem('ticketing_users', JSON.stringify(newUsers));
+
+        // Log Activity
+        logActivity(
+            `Removed access for admin: ${userToDelete?.name || email}`,
+            currentUser?.name || "Super Admin",
+            userToDelete?.productId || null
+        );
+
+        closeModal();
     };
 
     const openAddModal = () => {
@@ -113,14 +139,23 @@ export default function AdminsPage() {
         setEditingUser(null);
     };
 
-    const filteredUsers = users.filter(u =>
-        u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.email.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const { user: currentUser } = useAuth();
+
+    const filteredUsers = users.filter(u => {
+        // Role based filtering
+        if (currentUser?.role === ROLES.PRODUCT_ADMIN && currentUser?.productId) {
+            if (u.productId !== currentUser.productId) return false;
+        }
+
+        const matchesSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            u.email.toLowerCase().includes(searchQuery.toLowerCase());
+
+        return matchesSearch;
+    });
 
     return (
         <div className="min-h-screen pb-12 bg-[#F8FAFC]">
-            <Header title="Admins" subtitle="Manage System Administrators & Access" />
+            <Header title="Product Admins" subtitle="Manage System Administrators & Access" />
 
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -139,13 +174,15 @@ export default function AdminsPage() {
                             className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1500FF]/20 focus:border-[#1500FF] transition-all text-slate-800 placeholder:text-slate-400"
                         />
                     </div>
-                    <button
-                        onClick={openAddModal}
-                        className="flex items-center gap-2 bg-[#1500FF] hover:bg-[#1500FF]/90 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-[#1500FF]/25 transition-all text-sm active:scale-95"
-                    >
-                        <Plus size={20} />
-                        Add New Admin
-                    </button>
+                    {currentUser?.role === ROLES.SUPER_ADMIN && (
+                        <button
+                            onClick={openAddModal}
+                            className="flex items-center gap-2 bg-[#1500FF] hover:bg-slate-900 text-white px-6 py-3 rounded-xl font-bold transition-all duration-300 text-sm active:scale-95"
+                        >
+                            <Plus size={20} />
+                            Add New Admin
+                        </button>
+                    )}
                 </div>
 
                 {/* Users List */}
@@ -282,9 +319,10 @@ export default function AdminsPage() {
                                         <div className="relative">
                                             <Shield className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                             <select
+                                                disabled={currentUser?.role === ROLES.PRODUCT_ADMIN}
                                                 value={formData.productId}
                                                 onChange={e => setFormData({ ...formData, productId: e.target.value })}
-                                                className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#1500FF]/20 focus:border-[#1500FF] text-slate-800 font-medium appearance-none bg-white"
+                                                className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#1500FF]/20 focus:border-[#1500FF] text-slate-800 font-medium appearance-none bg-white disabled:bg-slate-50 disabled:text-slate-400"
                                             >
                                                 <option value="">No Product (Super Admin Access)</option>
                                                 {Object.values(products).map((prod: any) => (
@@ -303,7 +341,7 @@ export default function AdminsPage() {
                             <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
                                 {editingUser && (
                                     <button
-                                        onClick={() => handleDeleteUser(editingUser.email)}
+                                        onClick={() => setConfirmModal({ isOpen: true, type: "delete", data: editingUser.email })}
                                         className="mr-auto text-rose-500 text-sm font-bold hover:bg-rose-50 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
                                     >
                                         <Trash2 size={16} /> Delete User
@@ -327,6 +365,19 @@ export default function AdminsPage() {
                     </div>
                 )}
             </AnimatePresence>
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={() => {
+                    if (confirmModal.type === "delete") handleDeleteUser(confirmModal.data);
+                }}
+                title={confirmModal.type === "delete" ? "Delete Administrator" : "Action Required"}
+                message={confirmModal.type === "delete"
+                    ? `Are you sure you want to remove access for ${confirmModal.data}? This action is permanent.`
+                    : String(confirmModal.data)}
+                confirmText={confirmModal.type === "delete" ? "Delete Access" : "Understood"}
+                variant={confirmModal.type === "delete" ? "danger" : "info"}
+            />
         </div>
     );
 }

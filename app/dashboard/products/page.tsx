@@ -7,6 +7,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { MOCK_PRODUCTS, ProductData } from "@/lib/data";
 import { ROLES } from "@/lib/auth";
+import { useAuth } from "../../context/AuthContext";
+import { logActivity } from "@/lib/activity";
+import ConfirmModal from "@/app/components/ConfirmModal";
 
 // Type extension for editable fields if needed, or just use ProductData
 interface ProductForm extends ProductData {
@@ -26,6 +29,16 @@ export default function ProductsPage() {
     // Form State for Add/Edit
     const [formData, setFormData] = useState<Partial<ProductData>>({});
 
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; productId: string | null }>({
+        isOpen: false,
+        productId: null
+    });
+    const [alertModal, setAlertModal] = useState<{ isOpen: boolean; message: string; title: string }>({
+        isOpen: false,
+        message: "",
+        title: "Validation Error"
+    });
+
     useEffect(() => {
         // Load from local storage if strictly necessary, but for now we sync from MOCK_PRODUCTS 
         // In a real app, this would fetch from API
@@ -39,10 +52,19 @@ export default function ProductsPage() {
         }
     }, []);
 
-    const filteredProducts = Object.values(products).filter(p =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.id.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const { user } = useAuth();
+
+    const filteredProducts = Object.values(products).filter(p => {
+        // Role based filtering
+        if (user?.role === ROLES.PRODUCT_ADMIN && user?.productId) {
+            if (p.id !== user.productId) return false;
+        }
+
+        const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.id.toLowerCase().includes(searchQuery.toLowerCase());
+
+        return matchesSearch;
+    });
 
     const handleAddClick = () => {
         setFormData({
@@ -68,7 +90,14 @@ export default function ProductsPage() {
     };
 
     const handleSaveProduct = () => {
-        if (!formData.id || !formData.name) return; // Simple validation
+        if (!formData.id || !formData.name || !formData.adminEmail || !formData.adminPassword) {
+            setAlertModal({
+                isOpen: true,
+                title: "Data Tidak Lengkap",
+                message: "Harap isi semua kolom wajib: ID Produk, Nama Produk, Email Admin, dan Password Admin."
+            });
+            return;
+        }
 
         const newProductId = formData.id.toLowerCase().replace(/\s+/g, '-');
         const newProduct: ProductData = {
@@ -110,21 +139,36 @@ export default function ProductsPage() {
         }
         // --------------------------------------------------
 
+        // Log Activity
+        logActivity(
+            selectedProduct ? `Updated product: ${newProduct.name}` : `Created new product: ${newProduct.name}`,
+            user?.name || "Super Admin",
+            newProductId
+        );
+
         setIsAddModalOpen(false);
         setIsEditModalOpen(false);
         setFormData({});
     };
 
     const handleDeleteProduct = (id: string) => {
-        if (confirm("Are you sure you want to delete this product?")) {
-            setProducts(prev => {
-                const updated = { ...prev };
-                delete updated[id];
-                localStorage.setItem('products', JSON.stringify(updated));
-                return updated;
-            });
-            setIsEditModalOpen(false);
-        }
+        setProducts(prev => {
+            const updated = { ...prev };
+            const productName = updated[id]?.name || id;
+            delete updated[id];
+            localStorage.setItem('products', JSON.stringify(updated));
+
+            // Log Activity
+            logActivity(
+                `Deleted product: ${productName}`,
+                user?.name || "Super Admin",
+                id
+            );
+
+            return updated;
+        });
+        setIsEditModalOpen(false);
+        setDeleteModal({ isOpen: false, productId: null });
     };
 
     return (
@@ -148,13 +192,15 @@ export default function ProductsPage() {
                             className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1500FF]/20 focus:border-[#1500FF] transition-all text-slate-800 placeholder:text-slate-400"
                         />
                     </div>
-                    <button
-                        onClick={handleAddClick}
-                        className="flex items-center gap-2 bg-[#1500FF] hover:bg-[#1500FF]/90 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-[#1500FF]/25 transition-all text-sm active:scale-95"
-                    >
-                        <Plus size={20} />
-                        Add New Product
-                    </button>
+                    {user?.role === ROLES.SUPER_ADMIN && (
+                        <button
+                            onClick={handleAddClick}
+                            className="flex items-center gap-2 bg-[#1500FF] hover:bg-slate-900 text-white px-6 py-3 rounded-xl font-bold transition-all duration-300 text-sm active:scale-95"
+                        >
+                            <Plus size={20} />
+                            Add New Product
+                        </button>
+                    )}
                 </div>
 
                 {/* Product Grid */}
@@ -212,16 +258,18 @@ export default function ProductsPage() {
                     </AnimatePresence>
 
                     {/* Add New Placeholder */}
-                    <motion.div
-                        onClick={handleAddClick}
-                        whileHover={{ scale: 1.02 }}
-                        className="cursor-pointer border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-8 text-slate-400 hover:border-[#1500FF]/40 hover:text-[#1500FF] hover:bg-[#1500FF]/5 transition-all min-h-[350px]"
-                    >
-                        <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4 group-hover:bg-white border border-transparent group-hover:border-[#1500FF]/20 shadow-sm transition-all">
-                            <Plus size={32} />
-                        </div>
-                        <p className="font-bold text-sm">Add New Product</p>
-                    </motion.div>
+                    {user?.role === ROLES.SUPER_ADMIN && (
+                        <motion.div
+                            onClick={handleAddClick}
+                            whileHover={{ scale: 1.02 }}
+                            className="cursor-pointer border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-8 text-slate-400 hover:border-[#1500FF]/40 hover:text-[#1500FF] hover:bg-[#1500FF]/5 transition-all min-h-[350px]"
+                        >
+                            <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4 group-hover:bg-white border border-transparent group-hover:border-[#1500FF]/20 shadow-sm transition-all">
+                                <Plus size={32} />
+                            </div>
+                            <p className="font-bold text-sm">Add New Product</p>
+                        </motion.div>
+                    )}
                 </div>
             </motion.div>
 
@@ -262,7 +310,7 @@ export default function ProductsPage() {
                             <div className="p-6 space-y-6 overflow-y-auto">
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5">Product ID</label>
+                                        <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5">Product ID <span className="text-rose-500">*</span></label>
                                         <input
                                             disabled={isEditModalOpen}
                                             type="text"
@@ -273,7 +321,7 @@ export default function ProductsPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5">Product Name</label>
+                                        <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5">Product Name <span className="text-rose-500">*</span></label>
                                         <input
                                             type="text"
                                             value={formData.name || ""}
@@ -301,7 +349,7 @@ export default function ProductsPage() {
                                     </h4>
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5">Admin Email</label>
+                                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5">Admin Email <span className="text-rose-500">*</span></label>
                                             <div className="relative">
                                                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                                 <input
@@ -314,7 +362,7 @@ export default function ProductsPage() {
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5">Admin Password</label>
+                                            <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5">Admin Password <span className="text-rose-500">*</span></label>
                                             <div className="relative">
                                                 <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                                 <input
@@ -333,7 +381,7 @@ export default function ProductsPage() {
                             <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
                                 {isEditModalOpen && (
                                     <button
-                                        onClick={() => handleDeleteProduct(selectedProduct!.id)}
+                                        onClick={() => setDeleteModal({ isOpen: true, productId: selectedProduct!.id })}
                                         className="mr-auto text-rose-500 text-sm font-bold hover:bg-rose-50 px-4 py-2 rounded-lg transition-colors"
                                     >
                                         Delete
@@ -358,6 +406,24 @@ export default function ProductsPage() {
                 )
                 }
             </AnimatePresence >
+
+            <ConfirmModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, productId: null })}
+                onConfirm={() => deleteModal.productId && handleDeleteProduct(deleteModal.productId)}
+                title="Delete Product"
+                message={`Are you sure you want to delete this product? All dashboard data, activities, and linked admin access will be permanently removed.`}
+            />
+
+            <ConfirmModal
+                isOpen={alertModal.isOpen}
+                onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+                onConfirm={() => setAlertModal({ ...alertModal, isOpen: false })}
+                title={alertModal.title}
+                message={alertModal.message}
+                confirmText="Understood"
+                variant="info"
+            />
         </div >
     );
 }

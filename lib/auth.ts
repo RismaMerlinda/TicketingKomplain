@@ -7,7 +7,7 @@ export const ROLES = {
 const DEFAULT_USERS = [
     {
         email: "admin@superadmin.co.id",
-        password: "password123", // Simple for simulation
+        password: "password123",
         name: "Super Admin",
         role: ROLES.SUPER_ADMIN,
         productId: null
@@ -20,14 +20,14 @@ const DEFAULT_USERS = [
         productId: "orbit"
     },
     {
-        email: "admin@admincatatmark.co.id",
+        email: "admin@admincatatmak.co.id",
         password: "password123",
-        name: "Admin Catatmark",
+        name: "Admin Catatmak",
         role: ROLES.PRODUCT_ADMIN,
-        productId: "catatmark"
+        productId: "catatmak"
     },
     {
-        email: "admin@adminjoki.co.id",
+        email: "admin@jokiinformatika.co.id",
         password: "password123",
         name: "Admin Joki",
         role: ROLES.PRODUCT_ADMIN,
