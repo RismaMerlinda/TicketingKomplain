@@ -33,87 +33,190 @@ export default function AdminsPage() {
     });
 
     useEffect(() => {
-        // Load Users
-        const storedUsers = getStoredUsers();
-        setUsers(storedUsers);
-
-        // Load Products (merge Mock + LocalStorage)
-        const storedProducts = localStorage.getItem('products');
-        if (storedProducts) {
+        const initData = async () => {
             try {
-                setProducts((prev: any) => ({ ...prev, ...JSON.parse(storedProducts) }));
+                // 1. Fetch Products first
+                const prodRes = await fetch('http://localhost:5900/api/products');
+                let productData: any = {};
+                if (prodRes.ok) {
+                    productData = await prodRes.json();
+                    setProducts(productData);
+                }
+
+                // 2. Fetch Users
+                const userRes = await fetch('http://localhost:5900/api/users');
+                if (userRes.ok) {
+                    let userData = await userRes.json();
+
+                    // --- AUTO SYNC LOGIC ---
+                    // Cek apalah User Collection kosong/ kurang sinkron?
+                    // Kita loop setiap product, cek apakah adminnya ada di userData?
+                    // Jika tidak ada, kita create via API.
+
+                    const existingEmails = new Set(userData.map((u: any) => u.email));
+                    const newAdminsToCreate: any[] = [];
+
+                    Object.values(productData).forEach((prod: any) => {
+                        if (prod.adminEmail && !existingEmails.has(prod.adminEmail)) {
+                            // Found a product without an Admin User -> Create queue
+                            newAdminsToCreate.push({
+                                email: prod.adminEmail,
+                                password: prod.adminPassword || 'default123',
+                                name: `Admin ${prod.name}`,
+                                role: ROLES.PRODUCT_ADMIN,
+                                productId: prod.id
+                            });
+                            // Add to set to prevent duplicates in this loop
+                            existingEmails.add(prod.adminEmail);
+                        }
+                    });
+
+                    // Execute creations if needed
+                    if (newAdminsToCreate.length > 0) {
+                        console.log(`🔄 Syncing ${newAdminsToCreate.length} missing admins...`);
+                        await Promise.all(newAdminsToCreate.map(newUser =>
+                            fetch('http://localhost:5900/api/users', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(newUser)
+                            })
+                        ));
+
+                        // Refetch users after sync
+                        const reFetch = await fetch('http://localhost:5900/api/users');
+                        if (reFetch.ok) {
+                            userData = await reFetch.json();
+                        }
+                    }
+                    // -----------------------
+
+                    // Ensure Super Admin exists if DB is completely empty
+                    if (userData.length === 0) {
+                        const superAdmin = {
+                            email: "super@admin.com",
+                            password: "password",
+                            name: "Super Admin",
+                            role: ROLES.SUPER_ADMIN,
+                            productId: null
+                        };
+                        await fetch('http://localhost:5900/api/users', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(superAdmin)
+                        });
+                        userData = [superAdmin];
+                    }
+
+                    setUsers(userData);
+                }
             } catch (e) {
-                console.error("Failed to load products", e);
+                console.error("Initialization Error", e);
             }
-        }
+        };
+
+        initData();
     }, []);
 
-    const handleSaveUser = () => {
+    const handleSaveUser = async () => {
         if (!formData.email || !formData.name || !formData.password) return;
 
-        let newUsers = [...users];
-
         // Determine Role based on productId
-        // If productId is selected, strict role is PRODUCT_ADMIN. 
-        // If no productId (and maybe clear super admin check needed?), assume SUPER_ADMIN or just generic admin.
-        // For simplicity here: If productId is empty -> SUPER_ADMIN, else PRODUCT_ADMIN.
         const roleToSave = formData.productId ? ROLES.PRODUCT_ADMIN : ROLES.SUPER_ADMIN;
+        const payload = {
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+            role: roleToSave,
+            productId: formData.productId || null
+        };
 
-        if (editingUser) {
-            // Update existing
-            newUsers = newUsers.map(u => u.email === editingUser.email ? {
-                ...u,
-                name: formData.name,
-                password: formData.password, // In real app, separate password reset
-                role: roleToSave,
-                productId: formData.productId || null
-            } : u);
-        } else {
-            // Add New
-            if (newUsers.find(u => u.email === formData.email)) {
-                setConfirmModal({
-                    isOpen: true,
-                    type: "error",
-                    data: "User with this email already exists!"
+        try {
+            if (editingUser) {
+                // Update existing (Using editingUser._id from MongoDB if available, or fetch by ID logic)
+                // Since our frontend might not have _id yet if fresh from localStorage, be careful.
+                const idToUpdate = editingUser._id || editingUser.id || editingUser.email; // Fallback logic
+
+                // For UPDATE, we usually need _id from database. 
+                // However, our API delete logic uses findById. 
+                // Let's assume editingUser has _id if it came from API.
+
+                const res = await fetch(`http://localhost:5900/api/users/${editingUser._id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
-                return;
+                if (!res.ok) throw new Error("Failed to update");
+                const updated = await res.json();
+
+                setUsers(prev => prev.map(u => u._id === updated._id ? updated : u));
+            } else {
+                // Add New
+                const res = await fetch('http://localhost:5900/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    setConfirmModal({
+                        isOpen: true,
+                        type: "error",
+                        data: err.message || "Failed to create user"
+                    });
+                    return;
+                }
+
+                const created = await res.json();
+                setUsers(prev => [...prev, created]);
             }
-            newUsers.push({
-                email: formData.email,
-                name: formData.name,
-                password: formData.password,
-                role: roleToSave,
-                productId: formData.productId || null
+
+            // Log Activity
+            logActivity(
+                editingUser ? `Updated administrator: ${payload.name}` : `Added new administrator: ${payload.name}`,
+                currentUser?.name || "Super Admin",
+                payload.productId || null
+            );
+
+            closeModal();
+
+        } catch (error: any) {
+            console.error("Save User Error", error);
+            setConfirmModal({
+                isOpen: true,
+                type: "error",
+                data: "Operation failed. Check server connection."
             });
         }
-
-        setUsers(newUsers);
-        localStorage.setItem('ticketing_users', JSON.stringify(newUsers));
-
-        // Log Activity
-        logActivity(
-            editingUser ? `Updated administrator: ${formData.name}` : `Added new administrator: ${formData.name}`,
-            currentUser?.name || "Super Admin",
-            formData.productId || null
-        );
-
-        closeModal();
     };
 
-    const handleDeleteUser = (email: string) => {
-        const userToDelete = users.find(u => u.email === email);
-        const newUsers = users.filter(u => u.email !== email);
-        setUsers(newUsers);
-        localStorage.setItem('ticketing_users', JSON.stringify(newUsers));
+    const handleDeleteUser = async (emailOrId: string) => {
+        // We might get email or ID. Let's find the user first.
+        const userToDelete = users.find(u => u.email === emailOrId || u._id === emailOrId);
+        if (!userToDelete) return;
 
-        // Log Activity
-        logActivity(
-            `Removed access for admin: ${userToDelete?.name || email}`,
-            currentUser?.name || "Super Admin",
-            userToDelete?.productId || null
-        );
+        try {
+            const res = await fetch(`http://localhost:5900/api/users/${userToDelete._id}`, {
+                method: 'DELETE'
+            });
 
-        closeModal();
+            if (!res.ok) throw new Error("Failed to delete");
+
+            setUsers(prev => prev.filter(u => u._id !== userToDelete._id));
+
+            // Log Activity
+            logActivity(
+                `Removed access for admin: ${userToDelete.name}`,
+                currentUser?.name || "Super Admin",
+                userToDelete.productId || null
+            );
+
+            closeModal();
+            setConfirmModal({ ...confirmModal, isOpen: false });
+
+        } catch (error) {
+            console.error("Delete Error", error);
+        }
     };
 
     const openAddModal = () => {

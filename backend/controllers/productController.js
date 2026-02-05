@@ -1,4 +1,29 @@
 const Product = require('../models/Product');
+const User = require('../models/User'); // Import User Model
+
+// Helper to sync admin user
+const syncAdminUser = async (productData) => {
+    try {
+        if (!productData.adminEmail || !productData.adminPassword) return;
+
+        // Sync or Create Admin User
+        await User.findOneAndUpdate(
+            { email: productData.adminEmail },
+            {
+                email: productData.adminEmail,
+                password: productData.adminPassword, // In real app, hash this!
+                name: `Admin ${productData.name}`,
+                role: 'PRODUCT_ADMIN',
+                productId: productData.id,
+                avatar: `https://ui-avatars.com/api/?name=${productData.name}&background=random`
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+        console.log(`👤 Admin user synced for product: ${productData.id}`);
+    } catch (err) {
+        console.error("Failed to sync admin user:", err);
+    }
+};
 
 // Get all products
 exports.getProducts = async (req, res) => {
@@ -48,17 +73,14 @@ exports.createProduct = async (req, res) => {
             return res.status(400).json({ message: "Product ID already exists" });
         }
 
-        const newProduct = new Product({
-            id,
-            name,
-            description,
-            icon,
-            adminEmail,
-            adminPassword
-        });
-
+        const newProduct = new Product({ id, name, description, icon, adminEmail, adminPassword });
         const savedProduct = await newProduct.save();
+
         console.log('✅ Product created:', savedProduct.id);
+
+        // SYNC ADMIN
+        await syncAdminUser(savedProduct);
+
         res.status(201).json(savedProduct);
     } catch (err) {
         console.error('❌ Create Product Error:', err);
@@ -79,6 +101,11 @@ exports.updateProduct = async (req, res) => {
             { new: true, upsert: true, setDefaultsOnInsert: true }
         );
 
+        if (updatedProduct) {
+            // SYNC ADMIN
+            await syncAdminUser(updatedProduct);
+        }
+
         res.json(updatedProduct);
     } catch (err) {
         res.status(400).json({ message: err.message });
@@ -93,6 +120,12 @@ exports.deleteProduct = async (req, res) => {
 
         if (!deleted) {
             return res.status(404).json({ message: "Product not found" });
+        }
+
+        // Also delete the associated admin user if they exist
+        if (deleted.adminEmail) {
+            await User.findOneAndDelete({ email: deleted.adminEmail });
+            console.log(`👤 Associated admin user deleted: ${deleted.adminEmail}`);
         }
 
         res.json({ message: "Product deleted" });
