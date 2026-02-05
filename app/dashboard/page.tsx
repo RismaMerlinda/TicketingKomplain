@@ -96,11 +96,11 @@ const itemVariants = {
 
 function StatsCard({ title, value, icon, trend, trendUp }: StatsCardProps) {
     return (
-        <motion.div variants={itemVariants as any} className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] transition-all duration-300 group hover:-translate-y-1 relative overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm group relative overflow-hidden">
             {/* Subtle background shine */}
 
             <div className="flex items-start justify-between mb-6 relative z-10">
-                <div className="p-3.5 rounded-2xl bg-slate-50 text-slate-400 group-hover:text-white group-hover:bg-[#1500FF] transition-all duration-300 shadow-sm border border-slate-100 group-hover:border-transparent group-hover:shadow-[#1500FF]/30">
+                <div className="p-3.5 rounded-2xl bg-slate-50 text-slate-400 transition-all duration-300 shadow-sm border border-slate-100">
                     {icon}
                 </div>
                 {trend && (
@@ -111,26 +111,26 @@ function StatsCard({ title, value, icon, trend, trendUp }: StatsCardProps) {
                 )}
             </div>
             <div className="relative z-10">
-                <h3 className="text-4xl font-extrabold tracking-tighter text-slate-800 group-hover:text-[#1500FF] transition-all duration-300">
+                <h3 className="text-4xl font-extrabold tracking-tighter text-slate-800 transition-all duration-300">
                     {value}
                 </h3>
                 <p className="text-[11px] uppercase tracking-wider text-slate-400 font-bold mt-2">{title}</p>
             </div>
-        </motion.div>
+        </div>
     );
 }
 
 function ProductStatCard({ id, name, total, active, url }: { id?: string, name: string, total: number, active: number, url?: string }) {
     const router = useRouter();
     return (
-        <motion.div variants={itemVariants as any} className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] hover:border-[#1500FF]/20 transition-all duration-300 group hover:-translate-y-1">
+        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm group">
             <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 bg-slate-50 rounded-xl text-slate-400 group-hover:bg-[#1500FF] group-hover:text-white transition-all duration-300 shadow-sm">
+                    <div className="p-3 bg-slate-50 rounded-xl text-slate-400 transition-all duration-300 shadow-sm">
                         <Package size={20} />
                     </div>
                     <div>
-                        <h4 className="font-bold text-base text-slate-800 group-hover:text-[#1500FF] transition-colors">{name}</h4>
+                        <h4 className="font-bold text-base text-slate-800 transition-colors">{name}</h4>
                         <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Software Product</p>
                     </div>
                 </div>
@@ -156,12 +156,12 @@ function ProductStatCard({ id, name, total, active, url }: { id?: string, name: 
             <div className="pt-4 border-t border-slate-50">
                 <button
                     onClick={() => router.push(url || `/dashboard?product=${id || name.toLowerCase().replace(/\s+/g, '-')}`)}
-                    className="w-full text-xs font-bold text-slate-500 hover:text-[#1500FF] flex items-center justify-between transition-colors group-hover:px-2"
+                    className="w-full text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center justify-between transition-colors"
                 >
-                    View Dashboard <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 group-hover:text-[#1500FF]" />
+                    View Dashboard <ArrowRight size={14} className="text-slate-400" />
                 </button>
             </div>
-        </motion.div>
+        </div>
     );
 }
 
@@ -635,24 +635,24 @@ function DashboardContent() {
                             <div className="space-y-3">
                                 <button
                                     onClick={() => router.push('/dashboard/tickets')}
-                                    className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-[#1500FF] border border-transparent hover:shadow-lg hover:shadow-[#1500FF]/25 rounded-xl transition-all group duration-300"
+                                    className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 border border-transparent rounded-xl transition-all group duration-300"
                                 >
-                                    <span className="text-sm font-bold text-slate-600 group-hover:text-white">Create New Ticket</span>
-                                    <Plus size={18} className="text-slate-400 group-hover:text-white" />
+                                    <span className="text-sm font-bold text-slate-600 group-hover:text-slate-900">Create New Ticket</span>
+                                    <Plus size={18} className="text-slate-400 group-hover:text-slate-600" />
                                 </button>
                                 <button
                                     onClick={() => router.push('/dashboard/reports')}
-                                    className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-[#1500FF] border border-transparent hover:shadow-lg hover:shadow-[#1500FF]/25 rounded-xl transition-all group duration-300"
+                                    className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 border border-transparent rounded-xl transition-all group duration-300"
                                 >
-                                    <span className="text-sm font-bold text-slate-600 group-hover:text-white">Generate Report</span>
-                                    <Download size={18} className="text-slate-400 group-hover:text-white" />
+                                    <span className="text-sm font-bold text-slate-600 group-hover:text-slate-900">Generate Report</span>
+                                    <Download size={18} className="text-slate-400 group-hover:text-slate-600" />
                                 </button>
                                 <button
                                     onClick={() => router.push('/dashboard/admins')}
-                                    className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-[#1500FF] border border-transparent hover:shadow-lg hover:shadow-[#1500FF]/25 rounded-xl transition-all group duration-300"
+                                    className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 border border-transparent rounded-xl transition-all group duration-300"
                                 >
-                                    <span className="text-sm font-bold text-slate-600 group-hover:text-white">Manage Admins</span>
-                                    <Users size={18} className="text-slate-400 group-hover:text-white" />
+                                    <span className="text-sm font-bold text-slate-600 group-hover:text-slate-900">Manage Admins</span>
+                                    <Users size={18} className="text-slate-400 group-hover:text-slate-600" />
                                 </button>
                             </div>
                         </motion.section>

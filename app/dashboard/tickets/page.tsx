@@ -102,8 +102,7 @@ const TicketCard = ({ ticket, onClick }: { ticket: TicketData, onClick: () => vo
             layout
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            whileHover={{ y: -4, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)" }}
-            className="group relative bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] overflow-hidden cursor-pointer flex flex-col h-full active:scale-[0.98] transition-all"
+            className="group relative bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] overflow-hidden cursor-pointer flex flex-col h-full transition-all"
             onClick={onClick}
         >
             <div className={`absolute top-0 left-0 right-0 h-1 ${styles.accent}`} />
@@ -116,7 +115,7 @@ const TicketCard = ({ ticket, onClick }: { ticket: TicketData, onClick: () => vo
                             {ticket.status}
                         </div>
                     </div>
-                    <h3 className="font-bold text-slate-800 text-base leading-tight line-clamp-2 group-hover:text-[#1500FF] transition-colors">
+                    <h3 className="font-bold text-slate-800 text-base leading-tight line-clamp-2 transition-colors">
                         {ticket.title}
                     </h3>
                 </div>
@@ -158,11 +157,11 @@ const TicketCard = ({ ticket, onClick }: { ticket: TicketData, onClick: () => vo
                 </div>
             </div>
             <div className="mt-1 mx-5 mb-5 grid grid-cols-2 gap-px bg-slate-100 border border-slate-100 rounded-xl overflow-hidden">
-                <div className="bg-slate-50/50 p-2.5 flex flex-col items-center justify-center text-center group-hover:bg-blue-50/30 transition-colors">
+                <div className="bg-slate-50/50 p-2.5 flex flex-col items-center justify-center text-center transition-colors">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Response</span>
                     <span className="text-xs font-bold text-slate-700">{ticket.responseDue}</span>
                 </div>
-                <div className="bg-slate-50/50 p-2.5 flex flex-col items-center justify-center text-center group-hover:bg-blue-50/30 transition-colors">
+                <div className="bg-slate-50/50 p-2.5 flex flex-col items-center justify-center text-center transition-colors">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Resolve</span>
                     <div className="flex items-center gap-1">
                         <span className="text-xs font-bold text-slate-700">{ticket.resolveDue}</span>
@@ -195,8 +194,7 @@ const TicketListItem = ({ ticket, onClick }: { ticket: TicketData, onClick: () =
             layout
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            whileHover={{ y: -2, boxShadow: "0 10px 40px -10px rgba(0,0,0,0.08)" }}
-            className="group relative bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden cursor-pointer active:scale-[0.99] transition-all"
+            className="group relative bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden cursor-pointer transition-all"
             onClick={onClick}
         >
             <div className={`absolute left-0 top-0 bottom-0 w-1 ${styles.accent}`} />

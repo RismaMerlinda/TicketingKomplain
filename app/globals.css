@@ -52,9 +52,20 @@
   --color-foreground: var(--foreground);
 }
 
+html {
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  background-color: #F8FAFC;
+}
+
 body {
-  background: var(--pk-bg-outer);
-  color: var(--pk-text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  background-color: #F8FAFC;
+  background-attachment: fixed;
+
+  color: var(--pk-bg-outer);
   font-family: var(--font-sans), sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

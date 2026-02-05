@@ -223,10 +223,10 @@ export default function ProductsPage() {
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
-                                className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:border-[#1500FF]/20 transition-all duration-300 group flex flex-col"
+                                className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm hover:shadow-md transition-all duration-300 group flex flex-col"
                             >
                                 <div className="flex items-center justify-between mb-6">
-                                    <div className="w-12 h-12 bg-slate-50 rounded-xl text-slate-400 group-hover:bg-[#1500FF] group-hover:text-white transition-all duration-300 flex items-center justify-center overflow-hidden border border-slate-100">
+                                    <div className="w-12 h-12 bg-slate-50 rounded-xl text-slate-400 transition-all duration-300 flex items-center justify-center overflow-hidden border border-slate-100">
                                         {product.icon ? (
                                             // eslint-disable-next-line @next/next/no-img-element
                                             <img src={product.icon} alt={product.name} className="w-full h-full object-cover" />
@@ -246,7 +246,7 @@ export default function ProductsPage() {
                                 </div>
 
                                 <div className="flex-1">
-                                    <h3 className="font-bold text-lg text-slate-800 mb-1 group-hover:text-[#1500FF] transition-colors">{product.name}</h3>
+                                    <h3 className="font-bold text-lg text-slate-800 mb-1 transition-colors">{product.name}</h3>
                                     <p className="text-sm text-slate-400 line-clamp-2 mb-4">{product.description || "No description provided."}</p>
 
                                     <div className="grid grid-cols-2 gap-4 mb-6">
@@ -260,9 +260,9 @@ export default function ProductsPage() {
                                                         <p className="text-[10px] uppercase text-slate-400 font-bold mb-1">Tickets</p>
                                                         <p className="font-extrabold text-slate-700">{pTotal}</p>
                                                     </div>
-                                                    <div className="p-3 bg-slate-50 rounded-xl border border-transparent group-hover:border-[#1500FF]/10 group-hover:bg-[#1500FF]/5 transition-colors">
-                                                        <p className="text-[10px] uppercase text-slate-400 font-bold mb-1 group-hover:text-[#1500FF]">Active</p>
-                                                        <p className="font-extrabold text-slate-700 group-hover:text-[#1500FF]">{pActive}</p>
+                                                    <div className="p-3 bg-slate-50 rounded-xl border border-transparent transition-colors">
+                                                        <p className="text-[10px] uppercase text-slate-400 font-bold mb-1">Active</p>
+                                                        <p className="font-extrabold text-slate-700">{pActive}</p>
                                                     </div>
                                                 </>
                                             )
@@ -272,10 +272,10 @@ export default function ProductsPage() {
 
                                 <button
                                     onClick={() => router.push(`/dashboard?product=${product.id}`)}
-                                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-[#1500FF] hover:border-transparent hover:text-white transition-all text-sm group/btn"
+                                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 hover:text-slate-800 transition-all text-sm"
                                 >
                                     View Dashboard
-                                    <ArrowRight size={16} className="transition-transform group-hover/btn:translate-x-1" />
+                                    <ArrowRight size={16} className="text-slate-400" />
                                 </button>
                             </motion.div>
                         ))}
