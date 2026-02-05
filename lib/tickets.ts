@@ -5,7 +5,7 @@
 export interface TicketData {
     id: string;
     code: string;
-    status: "New" | "In Progress" | "Pending" | "Overdue" | "Done" | "Closed" | "Resolved";
+    status: "New" | "In Progress" | "Pending" | "Overdue" | "Done" | "Closed";
     title: string;
     description?: string;
     product: string;

@@ -56,10 +56,9 @@ const getStatusStyles = (status: TicketStatus) => {
         case "New": return { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-100", icon: AlertCircle, accent: "bg-blue-500" };
         case "In Progress": return { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-100", icon: Clock, accent: "bg-amber-500" };
         case "Pending": return { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200", icon: MoreHorizontal, accent: "bg-slate-400" };
-        case "Overdue": return { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-100", icon: AlertCircle, accent: "bg-indigo-600" };
-        case "Done":
-        case "Resolved": return { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100", icon: CheckCircle2, accent: "bg-emerald-500" };
-        case "Closed": return { bg: "bg-slate-100", text: "text-slate-400", border: "border-slate-200", icon: XCircle, accent: "bg-slate-300" };
+        case "Overdue": return { bg: "bg-slate-900", text: "text-white", border: "border-slate-800", icon: AlertCircle, accent: "bg-black" };
+        case "Done": return { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100", icon: CheckCircle2, accent: "bg-emerald-500" };
+        case "Closed": return { bg: "bg-[#EFEBE9]", text: "text-[#4E342E]", border: "border-[#D7CCC8]", icon: XCircle, accent: "bg-[#3E2723]" };
     }
 };
 
@@ -100,12 +99,15 @@ const TicketCard = ({ ticket, onClick }: { ticket: TicketData, onClick: () => vo
     return (
         <motion.div
             layout
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="group relative bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] overflow-hidden cursor-pointer flex flex-col h-full transition-all"
+            initial={{ opacity: 0, scale: 0.9, x: 10 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.9, x: -10 }}
+            whileHover={{ y: -10, scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="group relative bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] hover:shadow-2xl hover:border-[#1500FF]/20 overflow-hidden cursor-pointer flex flex-col h-full transition-all duration-300"
             onClick={onClick}
         >
-            <div className={`absolute top-0 left-0 right-0 h-1 ${styles.accent}`} />
+            <div className={`absolute top-0 left-0 right-0 h-1 ${styles.accent} ${ticket.status === 'Overdue' ? 'animate-pulse shadow-[0_0_10px_rgba(0,0,0,0.5)]' : ''}`} />
             <div className="p-5 pb-3 flex items-start justify-between">
                 <div>
                     <div className="flex items-center gap-2 mb-1">
@@ -192,8 +194,9 @@ const TicketListItem = ({ ticket, onClick }: { ticket: TicketData, onClick: () =
     return (
         <motion.div
             layout
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 10, x: 20 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
             className="group relative bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden cursor-pointer transition-all"
             onClick={onClick}
         >
@@ -298,10 +301,10 @@ const FilterTab = ({ label, count, isActive, onClick }: { label: string, count?:
         onClick={onClick}
         className={`
             px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 border
-            flex items-center gap-2 whitespace-nowrap
+            flex items-center gap-2 whitespace-nowrap active:scale-95
             ${isActive
-                ? "bg-[#1500FF] border-[#1500FF] text-white scale-105"
-                : "bg-white border-slate-200 text-slate-500 hover:border-[#1500FF]/30 hover:text-[#1500FF] hover:bg-slate-50"
+                ? "bg-[#1500FF] border-[#1500FF] text-white scale-105 shadow-lg shadow-blue-200"
+                : "bg-white border-slate-200 text-slate-500 hover:border-[#1500FF]/30 hover:text-[#1500FF] hover:bg-slate-50 hover:shadow-sm"
             }
         `}
     >
@@ -326,7 +329,7 @@ const ViewToggle = ({ mode, current, onClick }: { mode: ViewMode, current: ViewM
     return (
         <button
             onClick={() => onClick(mode)}
-            className={`p-2.5 rounded-xl border transition-all ${mode === current ? 'bg-[#1500FF] border-[#1500FF] text-white shadow-md' : 'bg-white border-slate-200 text-slate-400 hover:text-[#1500FF] hover:border-[#1500FF]/30'}`}
+            className={`p-2.5 rounded-xl border transition-all active:scale-90 ${mode === current ? 'bg-[#1500FF] border-[#1500FF] text-white shadow-md' : 'bg-white border-slate-200 text-slate-400 hover:text-[#1500FF] hover:border-[#1500FF]/30 hover:shadow-sm'}`}
         >
             <Icon size={18} />
         </button>
@@ -338,6 +341,16 @@ export default function TicketsPage() {
     const [tickets, setTickets] = useState<TicketData[]>([]);
     const [products, setProducts] = useState<Record<string, any>>(MOCK_PRODUCTS);
     const [activeTab, setActiveTab] = useState<TicketStatus | "All">("All");
+    const [direction, setDirection] = useState(0);
+    const tabOrder: (TicketStatus | "All")[] = ["All", "New", "In Progress", "Pending", "Overdue", "Done", "Closed"];
+
+    const handleTabChange = (status: TicketStatus | "All") => {
+        const prevIndex = tabOrder.indexOf(activeTab);
+        const newIndex = tabOrder.indexOf(status);
+        setDirection(newIndex > prevIndex ? 1 : -1);
+        setActiveTab(status);
+    };
+
     const [searchQuery, setSearchQuery] = useState("");
     const [viewMode, setViewMode] = useState<ViewMode>("GRID");
 
@@ -579,35 +592,44 @@ export default function TicketsPage() {
 
                 {/* 2. Filters Row */}
                 <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
-                    <FilterTab label="All Tickets" isActive={activeTab === "All"} onClick={() => setActiveTab("All")} count={roleFilteredTickets.length} />
-                    {(["New", "In Progress", "Pending", "Overdue", "Done", "Resolved", "Closed"] as TicketStatus[]).map(s => (
-                        <FilterTab key={s} label={s} isActive={activeTab === s} onClick={() => setActiveTab(s)} count={roleFilteredTickets.filter(t => t.status === s).length} />
+                    <FilterTab label="All Tickets" isActive={activeTab === "All"} onClick={() => handleTabChange("All")} count={roleFilteredTickets.length} />
+                    {(["New", "In Progress", "Pending", "Overdue", "Done", "Closed"] as TicketStatus[]).map(s => (
+                        <FilterTab key={s} label={s} isActive={activeTab === s} onClick={() => handleTabChange(s)} count={roleFilteredTickets.filter(t => t.status === s).length} />
                     ))}
                 </div>
 
                 {/* 3. Ticket Content */}
+                <div className="relative overflow-hidden min-h-[400px]">
+                    <AnimatePresence initial={false} mode="wait" custom={direction}>
+                        <motion.div
+                            key={activeTab + viewMode}
+                            custom={direction}
+                            initial={{ opacity: 0, x: direction * 50 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -direction * 50 }}
+                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                            className="w-full"
+                        >
+                            {/* GRID VIEW */}
+                            {viewMode === "GRID" && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                    {filteredTickets.map(ticket => (
+                                        <TicketCard key={ticket.id} ticket={ticket} onClick={() => setSelectedTicket(ticket)} />
+                                    ))}
+                                </div>
+                            )}
 
-                {/* GRID VIEW */}
-                {viewMode === "GRID" && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        <AnimatePresence mode="popLayout">
-                            {filteredTickets.map(ticket => (
-                                <TicketCard key={ticket.id} ticket={ticket} onClick={() => setSelectedTicket(ticket)} />
-                            ))}
-                        </AnimatePresence>
-                    </div>
-                )}
-
-                {/* LIST VIEW */}
-                {viewMode === "LIST" && (
-                    <div className="flex flex-col gap-3 max-w-[1200px] mx-auto w-full">
-                        <AnimatePresence mode="popLayout">
-                            {filteredTickets.map(ticket => (
-                                <TicketListItem key={ticket.id} ticket={ticket} onClick={() => setSelectedTicket(ticket)} />
-                            ))}
-                        </AnimatePresence>
-                    </div>
-                )}
+                            {/* LIST VIEW */}
+                            {viewMode === "LIST" && (
+                                <div className="flex flex-col gap-3 max-w-[1200px] mx-auto w-full">
+                                    {filteredTickets.map(ticket => (
+                                        <TicketListItem key={ticket.id} ticket={ticket} onClick={() => setSelectedTicket(ticket)} />
+                                    ))}
+                                </div>
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
+                </div>
 
                 {/* TABLE VIEW */}
                 {viewMode === "TABLE" && (
@@ -721,8 +743,8 @@ export default function TicketsPage() {
                                 </div>
                             </div>
                             <div className="p-6 border-t border-slate-100 bg-white flex justify-end gap-3">
-                                <button onClick={() => setIsAddModalOpen(false)} className="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50">Cancel</button>
-                                <button onClick={handleAddTicket} className="px-6 py-2.5 rounded-xl bg-[#1500FF] text-white font-bold hover:bg-[#1500FF]/90">Save Ticket</button>
+                                <button onClick={() => setIsAddModalOpen(false)} className="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-500 font-bold hover:bg-slate-100 hover:text-slate-800 transition-all active:scale-95">Cancel</button>
+                                <button onClick={handleAddTicket} className="px-6 py-2.5 rounded-xl bg-[#1500FF] text-white font-bold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 transition-all active:scale-95">Save Ticket</button>
                             </div>
                         </motion.div>
                     </div>
@@ -778,8 +800,8 @@ export default function TicketsPage() {
                             </div>
 
                             <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-                                <button onClick={() => setDeleteModal({ isOpen: true, ticketId: selectedTicket.id })} className="px-5 py-2.5 rounded-xl border border-rose-200 text-rose-600 font-bold hover:bg-rose-50 flex items-center gap-2"><Trash2 size={16} /> Delete</button>
-                                <button onClick={() => setSelectedTicket(null)} className="px-6 py-2.5 rounded-xl bg-[#1500FF] text-white font-bold hover:bg-[#1500FF]/90 shadow-lg">Done</button>
+                                <button onClick={() => setDeleteModal({ isOpen: true, ticketId: selectedTicket.id })} className="px-5 py-2.5 rounded-xl border border-rose-200 text-rose-500 font-bold hover:bg-rose-500 hover:text-white transition-all active:scale-95 flex items-center gap-2"><Trash2 size={16} /> Delete</button>
+                                <button onClick={() => setSelectedTicket(null)} className="px-6 py-2.5 rounded-xl bg-[#1500FF] text-white font-bold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 transition-all active:scale-95">Done</button>
                             </div>
                         </motion.div>
                     </div>

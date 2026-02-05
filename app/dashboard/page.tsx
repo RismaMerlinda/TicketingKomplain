@@ -16,8 +16,8 @@ import {
     Filter,
     Activity,
     MoreHorizontal,
-    Star,
-    Zap
+    Zap,
+    AlertCircle
 } from "lucide-react";
 import {
     AreaChart,
@@ -59,10 +59,12 @@ const ticketTrendData7d = [
 
 
 const statusDistData = [
-    { name: 'Resolved', value: 2312, color: '#10B981' },
-    { name: 'In Progress', value: 128, color: '#F59E0B' },
-    { name: 'Pending', value: 32, color: '#64748B' },
-    { name: 'Critical', value: 12, color: '#F43F5E' },
+    { name: 'Done', value: 1, color: '#10B981' },
+    { name: 'In Progress', value: 2, color: '#F59E0B' },
+    { name: 'Pending', value: 1, color: '#64748B' },
+    { name: 'New', value: 2, color: '#3B82F6' },
+    { name: 'Overdue', value: 1, color: '#000000' },
+    { name: 'Closed', value: 0, color: '#3E2723' },
 ];
 
 import { MOCK_PRODUCTS } from "@/lib/data";
@@ -315,8 +317,8 @@ function DashboardContent() {
         inProgress: dateFilteredTickets.filter((t: any) => t.status === 'In Progress').length,
         overdue: dateFilteredTickets.filter((t: any) => t.status === 'Overdue').length,
         closed: dateFilteredTickets.filter((t: any) => t.status === 'Closed').length,
-        // Group Done & Resolved for the success metric
-        resolvedGroup: dateFilteredTickets.filter((t: any) => ['Done', 'Resolved'].includes(t.status)).length,
+        // Done count for the success metric
+        resolvedGroup: dateFilteredTickets.filter((t: any) => t.status === 'Done').length,
         satisfaction: productData?.stats?.satisfaction || "4.9/5.0"
     };
 
@@ -336,7 +338,7 @@ function DashboardContent() {
 
         if (trendData[dayIndex]) {
             trendData[dayIndex].tickets++;
-            if (['Done', 'Resolved'].includes(t.status)) {
+            if (t.status === 'Done') {
                 trendData[dayIndex].resolved++;
             }
         }
@@ -359,8 +361,10 @@ function DashboardContent() {
         { name: 'New', value: calcStats.new, color: '#3B82F6' },
         { name: 'Pending', value: calcStats.pending, color: '#64748B' },
         { name: 'In Progress', value: calcStats.inProgress, color: '#F59E0B' },
-        { name: 'Resolved', value: calcStats.resolvedGroup, color: '#10B981' },
-    ].filter(d => d.value > 0);
+        { name: 'Done', value: calcStats.resolvedGroup, color: '#10B981' },
+        { name: 'Overdue', value: calcStats.overdue, color: '#000000' },
+        { name: 'Closed', value: calcStats.closed, color: '#3E2723' },
+    ];
 
     const currentDistData = dynamicDistData.length > 0 ? dynamicDistData : (productData ? productData.dist : statusDistData);
 
@@ -479,10 +483,10 @@ function DashboardContent() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
                         <StatsCard title="Total Tickets" value={stats?.total ?? (filterRange === '30d' ? "2,543" : "432")} icon={<Ticket size={24} />} trend={filterRange === '30d' ? "+12%" : "+5%"} trendUp={true} />
+                        <StatsCard title="Overdue" value={stats?.overdue ?? "1"} icon={<AlertCircle size={24} className="text-slate-900" />} trend="Action Required" />
                         <StatsCard title="New" value={stats?.new ?? "0"} icon={<Zap size={24} />} />
-                        <StatsCard title="Pending" value={stats?.pending ?? "32"} icon={<Inbox size={24} />} />
                         <StatsCard title="In Progress" value={stats?.inProgress ?? "128"} icon={<Clock size={24} />} />
-                        <StatsCard title="Resolved" value={stats?.resolvedGroup ?? (filterRange === '30d' ? "2,312" : "380")} icon={<CheckCircle2 size={24} />} trend="+8%" trendUp={true} />
+                        <StatsCard title="Done" value={stats?.resolvedGroup ?? (filterRange === '30d' ? "2,312" : "380")} icon={<CheckCircle2 size={24} />} trend="+8%" trendUp={true} />
                     </div>
                 </section>
 
@@ -557,7 +561,7 @@ function DashboardContent() {
                             {/* Center Text */}
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
                                 <span className="block text-4xl font-black text-slate-800 tracking-tighter">
-                                    {stats ? stats.total : (filterRange === '30d' ? '2.5k' : '0.4k')}
+                                    {stats ? stats.total : '7'}
                                 </span>
                                 <span className="text-[10px] text-slate-400 uppercase tracking-widest font-extrabold">Total</span>
                             </div>
@@ -672,8 +676,9 @@ function DashboardContent() {
                                     let dotColor = "bg-slate-300";
 
                                     if (t.includes('pending')) dotColor = "bg-gray-500";
-                                    else if (t.includes('closed')) dotColor = "bg-slate-950";
-                                    else if (t.includes('done') || t.includes('resolved') || t.includes('completed')) dotColor = "bg-emerald-500";
+                                    else if (t.includes('closed')) dotColor = "bg-[#3E2723]";
+                                    else if (t.includes('overdue')) dotColor = "bg-black";
+                                    else if (t.includes('done') || t.includes('completed')) dotColor = "bg-emerald-500";
                                     else if (t.includes('created') || t.includes('new')) dotColor = "bg-blue-500";
                                     else if (t.includes('progress') || t.includes('in progress')) dotColor = "bg-amber-500";
                                     else if (t.includes('updated') || t.includes('changed') || t.includes('modify')) dotColor = "bg-indigo-500";

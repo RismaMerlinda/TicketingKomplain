@@ -31,12 +31,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
 
     useEffect(() => {
-        // Check localStorage on mount
-        const storedUser = localStorage.getItem("ticketing_user");
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
-        }
+        const refresh = () => {
+            const storedUser = localStorage.getItem("ticketing_user");
+            if (storedUser) {
+                setUser(JSON.parse(storedUser));
+            }
+        };
+
+        refresh();
         setIsLoading(false);
+
+        // Listen for internal and external (tab) updates
+        window.addEventListener('authUpdated', refresh);
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'ticketing_user') refresh();
+        });
+
+        return () => {
+            window.removeEventListener('authUpdated', refresh);
+            window.removeEventListener('storage', refresh as any);
+        };
     }, []);
 
     const login = (email: string, password: string) => {
@@ -113,6 +127,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.error("Failed to update user in storage", e);
             }
         }
+
+        // Notify other components for real-time update
+        window.dispatchEvent(new Event('authUpdated'));
     };
 
     return (
