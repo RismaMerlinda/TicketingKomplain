@@ -216,8 +216,13 @@ export default function ProductsPage() {
                                 className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:border-[#1500FF]/20 transition-all duration-300 group flex flex-col"
                             >
                                 <div className="flex items-center justify-between mb-6">
-                                    <div className="p-3 bg-slate-50 rounded-xl text-slate-400 group-hover:bg-[#1500FF] group-hover:text-white transition-all duration-300">
-                                        <Package size={24} />
+                                    <div className="w-12 h-12 bg-slate-50 rounded-xl text-slate-400 group-hover:bg-[#1500FF] group-hover:text-white transition-all duration-300 flex items-center justify-center overflow-hidden border border-slate-100">
+                                        {product.icon ? (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img src={product.icon} alt={product.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <Package size={24} />
+                                        )}
                                     </div>
                                     <div className="flex gap-2">
                                         <button
@@ -330,6 +335,51 @@ export default function ProductsPage() {
                                             placeholder="e.g. Orbit Billiard System"
                                         />
                                     </div>
+
+                                    {/* Logo Upload */}
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5">Product Logo</label>
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-16 h-16 rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden bg-slate-50 relative group">
+                                                {formData.icon ? (
+                                                    // eslint-disable-next-line @next/next/no-img-element
+                                                    <img src={formData.icon} alt="Logo Preview" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Package className="text-slate-300" size={24} />
+                                                )}
+                                                {formData.icon && (
+                                                    <button
+                                                        onClick={() => setFormData({ ...formData, icon: undefined })}
+                                                        className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                                                    >
+                                                        <X size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <label className="flex-1 cursor-pointer">
+                                                <div className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-[#1500FF] transition-colors flex items-center justify-center gap-2">
+                                                    <Plus size={16} />
+                                                    Upload Logo
+                                                </div>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => {
+                                                                setFormData({ ...formData, icon: reader.result as string });
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }}
+                                                />
+                                            </label>
+                                        </div>
+                                    </div>
+
                                     <div>
                                         <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5">Description</label>
                                         <textarea
