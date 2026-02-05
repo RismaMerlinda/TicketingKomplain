@@ -42,15 +42,60 @@ export default function ProductsPage() {
     });
 
     useEffect(() => {
-        // Load from local storage if strictly necessary, but for now we sync from MOCK_PRODUCTS 
-        const stored = localStorage.getItem('products');
-        if (stored) {
+        // Fetch products from backend API
+        const fetchProducts = async () => {
             try {
-                setProducts(prev => ({ ...prev, ...JSON.parse(stored) }));
+                const res = await fetch('http://localhost:5900/api/products');
+                if (res.ok) {
+                    const data = await res.json();
+                    const productCount = Object.keys(data).length;
+
+                    // If API is empty, check localStorage and migrate
+                    if (productCount === 0) {
+                        const stored = localStorage.getItem('products');
+                        if (stored) {
+                            const localProducts = JSON.parse(stored);
+                            console.log('📦 Migrating products from localStorage to MongoDB...');
+
+                            // Migrate each product to MongoDB
+                            for (const [id, product] of Object.entries(localProducts)) {
+                                try {
+                                    await fetch('http://localhost:5900/api/products', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify(product)
+                                    });
+                                } catch (err) {
+                                    console.error('Failed to migrate product:', id, err);
+                                }
+                            }
+
+                            // Set local state immediately
+                            setProducts(localProducts);
+                            return;
+                        }
+                    }
+
+                    setProducts(data);
+                } else {
+                    console.error("Failed to fetch products from API");
+                    // Fallback to localStorage
+                    const stored = localStorage.getItem('products');
+                    if (stored) {
+                        setProducts(JSON.parse(stored));
+                    }
+                }
             } catch (e) {
-                console.error("Failed to load products", e);
+                console.error("API Connection Error", e);
+                // Fallback to localStorage
+                const stored = localStorage.getItem('products');
+                if (stored) {
+                    setProducts(JSON.parse(stored));
+                }
             }
-        }
+        };
+
+        fetchProducts();
 
         // Load tickets for dynamic stats
         const loadTickets = () => {
@@ -99,7 +144,7 @@ export default function ProductsPage() {
         setIsEditModalOpen(true);
     };
 
-    const handleSaveProduct = () => {
+    const handleSaveProduct = async () => {
         if (!formData.id || !formData.name || !formData.adminEmail || !formData.adminPassword) {
             setAlertModal({
                 isOpen: true,
@@ -120,66 +165,100 @@ export default function ProductsPage() {
             activity: formData.activity || []
         };
 
-        setProducts(prev => {
-            const updated = { ...prev, [newProductId]: newProduct };
-            localStorage.setItem('products', JSON.stringify(updated));
-            return updated;
-        });
+        try {
+            const method = isEditModalOpen ? 'PUT' : 'POST';
+            const url = isEditModalOpen
+                ? `http://localhost:5900/api/products/${newProductId}`
+                : 'http://localhost:5900/api/products';
 
-        // --- GENERATE ADMIN USER (Sync with Admin Menu) ---
-        // When a product is created/updated, we ensure the corresponding admin user exists/updates.
-        if (formData.adminEmail && formData.adminPassword) {
-            const storedUsersStr = localStorage.getItem('ticketing_users');
-            let users = storedUsersStr ? JSON.parse(storedUsersStr) : [];
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newProduct)
+            });
 
-            // Remove any existing user linked to this product to ensure clean slate/update
-            // (In a real app, we'd patch the user by ID, here we filter out old ref and add new)
-            users = users.filter((u: any) => u.productId !== newProductId && u.email !== formData.adminEmail);
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || 'Failed to save product');
+            }
 
-            const newUser = {
-                email: formData.adminEmail,
-                password: formData.adminPassword,
-                name: `Admin ${formData.name}`,
-                role: ROLES.PRODUCT_ADMIN,
-                productId: newProductId
-            };
+            // Update Local State from Response or manually
+            setProducts(prev => ({ ...prev, [newProductId]: newProduct }));
 
-            users.push(newUser);
-            localStorage.setItem('ticketing_users', JSON.stringify(users));
+            // Sync Admin (Local Storage for now, ideally also backend)
+            if (formData.adminEmail && formData.adminPassword) {
+                const storedUsersStr = localStorage.getItem('ticketing_users');
+                let users = storedUsersStr ? JSON.parse(storedUsersStr) : [];
+                users = users.filter((u: any) => u.productId !== newProductId && u.email !== formData.adminEmail);
+                const newUser = {
+                    email: formData.adminEmail,
+                    password: formData.adminPassword,
+                    name: `Admin ${formData.name}`,
+                    role: ROLES.PRODUCT_ADMIN,
+                    productId: newProductId
+                };
+                users.push(newUser);
+                localStorage.setItem('ticketing_users', JSON.stringify(users));
+            }
+
+            // Log Activity
+            logActivity(
+                isEditModalOpen ? `Updated product: ${newProduct.name}` : `Created new product: ${newProduct.name}`,
+                user?.name || "Super Admin",
+                newProductId
+            );
+
+            setIsAddModalOpen(false);
+            setIsEditModalOpen(false);
+            setFormData({});
+
+        } catch (error: any) {
+            console.error("Save Error:", error);
+            setAlertModal({
+                isOpen: true,
+                title: "Error Saving Product",
+                message: error.message || "Could not save product to database."
+            });
         }
-        // --------------------------------------------------
-
-        // Log Activity
-        logActivity(
-            selectedProduct ? `Updated product: ${newProduct.name}` : `Created new product: ${newProduct.name}`,
-            user?.name || "Super Admin",
-            newProductId
-        );
-
-        setIsAddModalOpen(false);
-        setIsEditModalOpen(false);
-        setFormData({});
     };
 
-    const handleDeleteProduct = (id: string) => {
+    const handleDeleteProduct = async (id: string) => {
         const productName = products[id]?.name || id;
 
-        setProducts(prev => {
-            const updated = { ...prev };
-            delete updated[id];
-            localStorage.setItem('products', JSON.stringify(updated));
-            return updated;
-        });
+        try {
+            const res = await fetch(`http://localhost:5900/api/products/${id}`, {
+                method: 'DELETE'
+            });
 
-        // Log Activity
-        logActivity(
-            `Deleted product: ${productName}`,
-            user?.name || "Super Admin",
-            id
-        );
+            if (!res.ok) {
+                throw new Error("Failed to delete product");
+            }
 
-        setIsEditModalOpen(false);
-        setDeleteModal({ isOpen: false, productId: null });
+            // Update UI State
+            setProducts(prev => {
+                const updated = { ...prev };
+                delete updated[id];
+                return updated;
+            });
+
+            // Log Activity
+            logActivity(
+                `Deleted product: ${productName}`,
+                user?.name || "Super Admin",
+                id
+            );
+
+            setIsEditModalOpen(false);
+            setDeleteModal({ isOpen: false, productId: null });
+
+        } catch (error: any) {
+            console.error("Delete Error:", error);
+            setAlertModal({
+                isOpen: true,
+                title: "Error Deleting Product",
+                message: error.message || "Could not delete product."
+            });
+        }
     };
 
     return (
