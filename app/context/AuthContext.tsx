@@ -2,15 +2,19 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { validateUser } from "@/lib/auth";
+
+// Menggunakan 127.0.0.1 untuk menghindari issue localhost resolution di beberapa sistem Windows
+const API_URL = "http://127.0.0.1:5900/api";
 
 export type UserRole = "SUPER_ADMIN" | "PRODUCT_ADMIN";
 
 export interface User {
+    _id?: string;
     email: string;
+    password?: string; // Simpan sementara di state untuk kemudahan (gunakan JWT di aplikasi production)
     name: string;
     role: UserRole;
-    productId?: string; // Optional, only for PRODUCT_ADMIN
+    productId?: string; // Opsional, hanya untuk PRODUCT_ADMIN
     avatar?: string;
 }
 
@@ -31,10 +35,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
 
     useEffect(() => {
-        const refresh = () => {
+        const refresh = async () => {
             const storedUser = localStorage.getItem("ticketing_user");
             if (storedUser) {
-                setUser(JSON.parse(storedUser));
+                const parsedUser = JSON.parse(storedUser);
+
+                // Set data awal dari storage
+                setUser(parsedUser);
+
+                // Sinkronisasi data Profile (Name & Avatar) dari MongoDB collection 'profiles'
+                try {
+                    const res = await fetch(`${API_URL}/profiles/${parsedUser.email}`);
+                    if (res.ok) {
+                        const profileData = await res.json();
+                        // Gabungkan display name dari profile ke user session
+                        const userWithProfile = {
+                            ...parsedUser,
+                            name: profileData.displayName || parsedUser.name,
+                            avatar: profileData.avatar || parsedUser.avatar
+                        };
+                        setUser(userWithProfile);
+                        localStorage.setItem("ticketing_user", JSON.stringify(userWithProfile));
+                    }
+                } catch (e) {
+                    console.error("Gagal sinkronisasi profil:", e);
+                    // Tetap gunakan data lama jika fetch gagal
+                }
             }
         };
 
@@ -53,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
+<<<<<<< HEAD
     const login = async (email: string, password: string) => {
         try {
             const response = await fetch('http://localhost:5900/api/auth/login', {
@@ -83,7 +110,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
             console.error("Login error:", error);
             return false;
+=======
+    const login = async (email: string, password: string): Promise<boolean> => {
+        try {
+            // Ambil daftar user dari database (Simple Auth)
+            const res = await fetch(`${API_URL}/users`);
+            if (!res.ok) {
+                console.error("Gagal mengambil data user dari server");
+                return false;
+            }
+
+            const users = await res.json();
+            const foundUser = users.find((u: any) => u.email === email);
+
+            if (foundUser && foundUser.password === password) {
+                // Ambil data profil juga
+                const profRes = await fetch(`${API_URL}/profiles/${email}`);
+                let displayName = foundUser.name;
+                let avatar = foundUser.avatar;
+
+                if (profRes.ok) {
+                    const profData = await profRes.json();
+                    if (profData.displayName) displayName = profData.displayName;
+                    if (profData.avatar) avatar = profData.avatar;
+                }
+
+                const userSession = { ...foundUser, name: displayName, avatar };
+                setUser(userSession);
+                localStorage.setItem("ticketing_user", JSON.stringify(userSession));
+                router.push("/dashboard");
+                return true;
+            }
+        } catch (error) {
+            console.error("Login Error (Server Down?):", error);
+>>>>>>> 970c36e (Fix: password update sync, build errors, and mongo db sync with backend routes)
         }
+        return false;
     };
 
     const logout = () => {
@@ -93,57 +155,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const updatePassword = async (oldPassword: string, newPassword: string) => {
+<<<<<<< HEAD
         if (!user) return { success: false, message: "User not found" };
 
         const storedUsersStr = localStorage.getItem('ticketing_users');
         if (!storedUsersStr) return { success: false, message: "Storage error" };
+=======
+        if (!user) return { success: false, message: "User tidak ditemukan" };
+>>>>>>> 970c36e (Fix: password update sync, build errors, and mongo db sync with backend routes)
 
         try {
-            let users = JSON.parse(storedUsersStr);
-            const userIndex = users.findIndex((u: any) => u.email === user.email);
+            const res = await fetch(`${API_URL}/passwords/update`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: user.email,
+                    oldPassword: oldPassword,
+                    newPassword: newPassword
+                }),
+            });
 
-            if (userIndex !== -1) {
-                // Validate old password
-                if (users[userIndex].password !== oldPassword) {
-                    return { success: false, message: "Incorrect current password" };
-                }
-
-                users[userIndex].password = newPassword;
-                localStorage.setItem('ticketing_users', JSON.stringify(users));
-                return { success: true, message: "Password updated successfully" };
+            if (!res.ok) {
+                const errorData = await res.json();
+                return { success: false, message: errorData.message || "Gagal update password" };
             }
+
+            // Update local state jika perlu
+            setUser({ ...user, password: newPassword });
+
+            return { success: true, message: "Password berhasil diperbarui dan riwayat dicatat di database" };
         } catch (e) {
-            console.error("Failed to update password", e);
+            console.error("Gagal update password:", e);
         }
-        return { success: false, message: "Failed to update password" };
+        return { success: false, message: "Gagal memperbarui password" };
     };
 
     const updateUser = async (updates: Partial<User>) => {
         if (!user) return;
 
-        const updatedUser = { ...user, ...updates };
+        try {
+            // Simpan HANYA Name/Avatar ke collection 'profiles' di MongoDB
+            const res = await fetch(`${API_URL}/profiles/update`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: user.email,
+                    displayName: updates.name || user.name,
+                    avatar: updates.avatar || user.avatar
+                }),
+            });
 
-        // Update current session
-        setUser(updatedUser);
-        localStorage.setItem("ticketing_user", JSON.stringify(updatedUser));
+            if (!res.ok) throw new Error("Gagal update profil ke database");
 
-        // Update permanent storage (ticketing_users)
-        const storedUsersStr = localStorage.getItem('ticketing_users');
-        if (storedUsersStr) {
-            try {
-                let users = JSON.parse(storedUsersStr);
-                const userIndex = users.findIndex((u: any) => u.email === user.email);
-                if (userIndex !== -1) {
-                    users[userIndex] = { ...users[userIndex], ...updates };
-                    localStorage.setItem('ticketing_users', JSON.stringify(users));
-                }
-            } catch (e) {
-                console.error("Failed to update user in storage", e);
-            }
+            const updatedProfile = await res.json();
+
+            // Update session UI
+            const updatedUser = {
+                ...user,
+                name: updatedProfile.displayName,
+                avatar: updatedProfile.avatar
+            };
+
+            setUser(updatedUser);
+            localStorage.setItem("ticketing_user", JSON.stringify(updatedUser));
+
+            // Notifikasi komponen lain
+            window.dispatchEvent(new Event('authUpdated'));
+        } catch (e) {
+            console.error("Gagal update profil:", e);
         }
-
-        // Notify other components for real-time update
-        window.dispatchEvent(new Event('authUpdated'));
     };
 
     return (

@@ -2,7 +2,7 @@
 
 import Header from "@/app/components/Header";
 import { useAuth } from "@/app/context/AuthContext";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, Mail, Shield, Check, Save, Plus, Trash2 } from "lucide-react";
 import { logActivity } from "@/lib/activity";
@@ -17,15 +17,28 @@ export default function ProfilePage() {
     const [showSuccess, setShowSuccess] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Sync local state when user data is loaded from database
+    useEffect(() => {
+        if (user) {
+            setName(user.name || "");
+            setAvatar(user.avatar || "");
+        }
+    }, [user]);
+
     const handleSave = async () => {
         setIsSaving(true);
-        // Simulate network
-        await new Promise(r => setTimeout(r, 800));
-        updateUser({ name, avatar });
-        logActivity("Updated profile information", user?.name || "User", user?.productId);
-        setIsSaving(false);
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
+        try {
+            // Save to MongoDB via AuthContext
+            await updateUser({ name, avatar });
+
+            logActivity("Updated profile information", user?.name || "User", user?.productId);
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 3000);
+        } catch (error) {
+            console.error("Failed to save profile:", error);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,7 +115,7 @@ export default function ProfilePage() {
                             </div>
                             <h2 className="mt-4 text-2xl font-black text-slate-800 tracking-tight">{user?.name}</h2>
                             <p className="text-xs font-bold text-[#1500FF] uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full mt-2">
-                                {user?.role.replace('_', ' ')}
+                                {(user?.role || "").replace('_', ' ')}
                             </p>
                         </div>
 
@@ -135,7 +148,7 @@ export default function ProfilePage() {
                                         </div>
                                         <input
                                             type="email"
-                                            value={user?.email}
+                                            value={user?.email || ""}
                                             readOnly
                                             className="w-full pl-14 pr-6 py-4 bg-slate-100 border border-slate-200 rounded-2xl cursor-not-allowed text-slate-500 font-bold outline-none"
                                         />
@@ -151,7 +164,7 @@ export default function ProfilePage() {
                                         </div>
                                         <input
                                             type="text"
-                                            value={user?.role.replace('_', ' ')}
+                                            value={user?.role.replace('_', ' ') || ""}
                                             readOnly
                                             className="w-full pl-14 pr-6 py-4 bg-slate-100 border border-slate-200 rounded-2xl cursor-not-allowed text-slate-500 font-bold outline-none"
                                         />

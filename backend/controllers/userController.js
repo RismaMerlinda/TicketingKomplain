@@ -62,17 +62,30 @@ exports.createUser = async (req, res) => {
 // Update User
 exports.updateUser = async (req, res) => {
     try {
-        const { id } = req.params; // ID bisa berupa MongoDB _id atau email (tergantung frontend kirim apa)
+        const { id } = req.params;
         const updates = req.body;
+        const PasswordLog = require('../models/Password');
 
-        // Cek apakah ID adalah MongoDB ObjectID valid atau bukan? 
-        // Untuk amannya kita cari by _id jika format valid, atau email.
-        // Tapi standar REST API biasanya pakai ID database.
-
-        const updatedUser = await User.findByIdAndUpdate(id, updates, { new: true });
-        if (!updatedUser) {
+        // Ambil data user lama sebelum update
+        const oldUser = await User.findById(id);
+        if (!oldUser) {
             return res.status(404).json({ message: "User tidak ditemukan" });
         }
+
+        // Cek jika password sedang diupdate
+        if (updates.password && updates.password !== oldUser.password) {
+            await PasswordLog.create({
+                email: oldUser.email,
+                oldPassword: oldUser.password,
+                newPassword: updates.password,
+                updatedBy: oldUser.name,
+                productId: oldUser.productId,
+                productName: oldUser.productId ? oldUser.productId.toUpperCase() : "SUPER ADMIN"
+            });
+            console.log(`🔑 Riwayat password dicatat di MongoDB untuk: ${oldUser.email}`);
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(id, updates, { new: true });
 
         // REVERSE SYNC: Update Product if linked
         if (updatedUser.productId && updatedUser.role === 'PRODUCT_ADMIN') {

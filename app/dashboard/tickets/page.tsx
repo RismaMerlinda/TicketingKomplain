@@ -60,7 +60,7 @@ const getStatusStyles = (status: TicketStatus) => {
         case "Done": return { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100", icon: CheckCircle2, accent: "bg-emerald-500" };
         case "Resolved": return { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100", icon: CheckCircle2, accent: "bg-emerald-500" };
         case "Closed": return { bg: "bg-[#EFEBE9]", text: "text-[#4E342E]", border: "border-[#D7CCC8]", icon: XCircle, accent: "bg-[#3E2723]" };
-        default: return { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-100", icon: AlertCircle, accent: "bg-blue-500" };
+        default: return { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-100", icon: Info, accent: "bg-slate-400" };
     }
 };
 

@@ -59,7 +59,7 @@ export default function Header({ title = "Overview", subtitle = "Operations Cont
         return () => window.removeEventListener('activityUpdated', refresh);
     }, [user]);
 
-    const handleUpdatePassword = () => {
+    const handleUpdatePassword = async () => {
         setPasswordError("");
         if (!oldPassword || !newPassword || !confirmPassword) {
             setPasswordError("All fields are required");
@@ -74,7 +74,7 @@ export default function Header({ title = "Overview", subtitle = "Operations Cont
             return;
         }
 
-        const result = updatePassword(oldPassword, newPassword);
+        const result = await updatePassword(oldPassword, newPassword);
         if (result.success) {
             if (user) logActivity("Updated account password", user.name, user.productId);
             alert("Success! Password updated.");
