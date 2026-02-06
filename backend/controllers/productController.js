@@ -20,9 +20,9 @@ const syncAdminUser = async (productData) => {
             },
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
-        console.log(`👤 Admin user synced for product: ${productData.id}`);
+        console.log(`👤 User Admin berhasil disinkronkan untuk produk: ${productData.id}`);
     } catch (err) {
-        console.error("Failed to sync admin user:", err);
+        console.error("Gagal menyinkronkan user admin:", err);
     }
 };
 
