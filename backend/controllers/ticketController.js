@@ -81,9 +81,40 @@ exports.seedTickets = async (req, res) => {
         }
 
         // 1. Get Real Products to map IDs
-        const products = await Product.find();
+        let products = await Product.find();
+
+        // AUTO-SEED PRODUCTS IF EMPTY
         if (products.length === 0) {
-            return res.status(400).json({ message: "No products found. Create products first." });
+            console.log("Database Product kosong. Seeding default products...");
+            const defaultProducts = [
+                {
+                    id: "joki-informatika",
+                    name: "Joki Informatika",
+                    description: "Layanan bimbingan akademik & project IT",
+                    icon: "https://ui-avatars.com/api/?name=Joki+Informatika&background=random",
+                    adminEmail: "admin@joki.com",
+                    adminPassword: "password123"
+                },
+                {
+                    id: "orbit-billiard",
+                    name: "Orbit Billiard",
+                    description: "Platform sistem manajemen billiard (POS)",
+                    icon: "https://ui-avatars.com/api/?name=Orbit+Billiard&background=random",
+                    adminEmail: "admin@orbit.com",
+                    adminPassword: "password123"
+                },
+                {
+                    id: "catatmak",
+                    name: "Catatmak",
+                    description: "Aplikasi pencatatan keuangan UMKM",
+                    icon: "https://ui-avatars.com/api/?name=Catatmak&background=random",
+                    adminEmail: "admin@catatmak.com",
+                    adminPassword: "password123"
+                }
+            ];
+            await Product.insertMany(defaultProducts);
+            products = await Product.find(); // Refresh list after insert
+            console.log("✅ Default products created.");
         }
 
         // Helper map: Name -> ID
