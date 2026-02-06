@@ -2,10 +2,12 @@
 
 // MOCK_TICKETS import removed to avoid conflict with local definition
 
+export type TicketStatus = "New" | "In Progress" | "Pending" | "Overdue" | "Done" | "Closed" | "Resolved";
+
 export interface TicketData {
     id: string;
     code: string;
-    status: "New" | "In Progress" | "Pending" | "Overdue" | "Done" | "Closed" | "Resolved";
+    status: TicketStatus;
     title: string;
     description?: string;
     product: string;
@@ -165,27 +167,48 @@ export const getStoredTickets = async (): Promise<TicketData[]> => {
         if (!response.ok) throw new Error('Failed to fetch tickets');
         const data = await response.json();
 
-        // Map backend format to frontend format if necessary
-        return data.map((t: any) => ({
-            id: t._id,
-            code: t.code,
-            status: t.status as any,
-            title: t.title,
-            description: t.description,
-            product: t.product,
-            source: t.source || t.platform || "WhatsApp",
-            priority: t.priority as any,
-            prioritySetAt: t.prioritySetAt,
-            responseDue: t.responseDue || (t.startDate ? `${t.startDate} · ${t.startTime}` : "ASAP"),
-            resolveDue: t.resolveDue || (t.endDate ? `${t.endDate} · ${t.endTime}` : "TBD"),
-            createdAt: t.createdAt,
-            customer: t.customerName || t.customer || "Customer",
-            // Include schedule fields for the form
-            startDate: t.startDate,
-            startTime: t.startTime,
-            endDate: t.endDate,
-            endTime: t.endTime
-        }));
+        // Map backend format to frontend format and auto-detect Overdue
+        const now = new Date();
+        return data.map((t: any) => {
+            let status: TicketStatus = ((): TicketStatus => {
+                const s = String(t.status || 'New').toLowerCase().replace('_', ' ');
+                if (s === 'new') return 'New';
+                if (s === 'pending') return 'Pending';
+                if (s === 'in progress') return 'In Progress';
+                if (s === 'overdue') return 'Overdue';
+                if (s === 'done' || s === 'resolved') return 'Done';
+                if (s === 'closed') return 'Closed';
+                return 'New';
+            })();
+
+            // Auto-Overdue Check: If not Done/Closed and past deadline
+            if (status !== "Done" && status !== "Closed" && t.endDate && t.endTime) {
+                const deadline = new Date(`${t.endDate}T${t.endTime}`);
+                if (deadline < now) {
+                    status = "Overdue";
+                }
+            }
+
+            return {
+                id: t._id,
+                code: t.code,
+                status,
+                title: t.title,
+                description: t.description,
+                product: t.product,
+                source: t.source || t.platform || "WhatsApp",
+                priority: t.priority as any,
+                prioritySetAt: t.prioritySetAt,
+                responseDue: t.responseDue || (t.startDate ? `${t.startDate} · ${t.startTime}` : "ASAP"),
+                resolveDue: t.resolveDue || (t.endDate ? `${t.endDate} · ${t.endTime}` : "TBD"),
+                createdAt: t.createdAt,
+                customer: t.customerName || t.customer || "Customer",
+                startDate: t.startDate,
+                startTime: t.startTime,
+                endDate: t.endDate,
+                endTime: t.endTime
+            };
+        });
     } catch (e) {
         console.error("API Fetch Error, falling back to mock:", e);
         return MOCK_TICKETS;

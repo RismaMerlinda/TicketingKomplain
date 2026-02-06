@@ -3,7 +3,31 @@ const Ticket = require('../models/Ticket');
 // Get all tickets
 exports.getTickets = async (req, res) => {
     try {
+        const now = new Date();
         const tickets = await Ticket.find().sort({ createdAt: -1 });
+
+        // Auto-update overdue status in DB
+        let changed = false;
+        for (let ticket of tickets) {
+            if (
+                ticket.status !== 'Done' &&
+                ticket.status !== 'Closed' &&
+                ticket.status !== 'Overdue' &&
+                ticket.endDate &&
+                ticket.endTime
+            ) {
+                // Parse date string YYYY-MM-DD and time HH:mm
+                const deadline = new Date(`${ticket.endDate}T${ticket.endTime}`);
+                if (deadline < now) {
+                    ticket.status = 'Overdue';
+                    await ticket.save();
+                    changed = true;
+                }
+            }
+        }
+
+        // If any ticket was updated, we might need the fresh list, 
+        // but the current 'tickets' array already has the updated status values
         res.json(tickets);
     } catch (err) {
         res.status(500).json({ message: err.message });

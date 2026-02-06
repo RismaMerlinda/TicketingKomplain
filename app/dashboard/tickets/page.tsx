@@ -106,7 +106,7 @@ const TicketCard = ({ ticket, onClick }: { ticket: TicketData, onClick: () => vo
             exit={{ opacity: 0, scale: 0.9, x: -10 }}
             whileHover={{ y: -10, scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="group relative bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] hover:shadow-2xl hover:border-[#1500FF]/20 overflow-hidden cursor-pointer flex flex-col h-full transition-all duration-300"
+            className="group relative bg-white rounded-2xl border border-slate-100 shadow-[0_4px_25px_-5px_rgba(0,0,0,0.05)] hover:shadow-2xl hover:border-[#1500FF]/30 overflow-hidden cursor-pointer flex flex-col h-full transition-all duration-300"
             onClick={onClick}
         >
             <div className={`absolute top-0 left-0 right-0 h-1 ${styles.accent} ${ticket.status === 'Overdue' ? 'animate-pulse shadow-[0_0_10px_rgba(0,0,0,0.5)]' : ''}`} />
@@ -155,10 +155,6 @@ const TicketCard = ({ ticket, onClick }: { ticket: TicketData, onClick: () => vo
                         </>
                     )}
                 </div>
-                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
-                    <Clock size={10} />
-                    <span>Set at: {ticket.prioritySetAt || "12 Feb 2026 · 09:10"}</span>
-                </div>
             </div>
             <div className="mt-1 mx-5 mb-5 grid grid-cols-2 gap-px bg-slate-100 border border-slate-100 rounded-xl overflow-hidden">
                 <div className="bg-slate-50/50 p-2.5 flex flex-col items-center justify-center text-center transition-colors">
@@ -199,6 +195,7 @@ const TicketListItem = ({ ticket, onClick }: { ticket: TicketData, onClick: () =
             initial={{ opacity: 0, y: 10, x: 20 }}
             animate={{ opacity: 1, y: 0, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
+            whileHover={{ x: 10 }}
             className="group relative bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden cursor-pointer transition-all"
             onClick={onClick}
         >
@@ -305,7 +302,7 @@ const FilterTab = ({ label, count, isActive, onClick }: { label: string, count?:
             px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 border
             flex items-center gap-2 whitespace-nowrap active:scale-95
             ${isActive
-                ? "bg-[#1500FF] border-[#1500FF] text-white scale-105 shadow-lg shadow-blue-200"
+                ? "bg-[#1500FF] border-[#1500FF] text-white scale-105 shadow-lg shadow-blue-200 relative z-10"
                 : "bg-white border-slate-200 text-slate-500 hover:border-[#1500FF]/30 hover:text-[#1500FF] hover:bg-slate-50 hover:shadow-sm"
             }
         `}
@@ -402,7 +399,7 @@ export default function TicketsPage() {
         customer: ""
     });
     // Deadline State
-    // Deadline / Schedule State
+    // Deadline / Schedule State - Reset to empty as requested
     const [startDate, setStartDate] = useState("");
     const [startTime, setStartTime] = useState("");
     const [endDate, setEndDate] = useState("");
@@ -450,12 +447,16 @@ export default function TicketsPage() {
         }
 
         const now = new Date();
+        const deadline = new Date(`${endDate}T${endTime}`);
+        const initialStatus = deadline < now ? "Overdue" : "New";
+
         const ticket = {
             title: newTicket.title,
             description: newTicket.description,
             product: effectiveProduct as any,
             source: (newTicket.source as TicketSource) || "WhatsApp",
             priority: (newTicket.priority as TicketPriority) || "Medium",
+            status: initialStatus,
             customer: newTicket.customer,
             startDate,
             startTime,
@@ -475,8 +476,8 @@ export default function TicketsPage() {
 
             setIsAddModalOpen(false);
             setNewTicket({ priority: "Medium", source: "WhatsApp", product: "Catatmak", status: "New", title: "", description: "", customer: "" });
-            setStartDate(""); setStartTime("");
-            setEndDate(""); setEndTime("");
+            // Reset to empty
+            setStartDate(""); setStartTime(""); setEndDate(""); setEndTime("");
 
             // Refresh tickets
             const updated = await getStoredTickets();
@@ -547,23 +548,115 @@ export default function TicketsPage() {
         setter(`${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`);
     };
 
-    const DateTimeField = ({ label, value, type, onChange, onAdjust }: { label: string, value: string, type: string, onChange: (v: string) => void, onAdjust: (dir: number) => void }) => (
-        <div className="space-y-1 flex-1 relative group">
-            <label className="text-[10px] font-bold uppercase text-slate-500">{label}</label>
-            <div className="relative">
-                <input
-                    type={type}
-                    className="w-full p-3 pr-10 rounded-xl border-2 border-blue-50 focus:ring-4 focus:ring-[#1500FF]/10 focus:border-[#1500FF] outline-none font-semibold text-slate-800 bg-white transition-all shadow-sm text-sm"
-                    value={value}
-                    onChange={e => onChange(e.target.value)}
-                />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-0.5">
-                    <button type="button" onClick={() => onAdjust(1)} className="p-0.5 hover:bg-slate-100 rounded text-slate-900 transition-colors"><ChevronUp size={14} /></button>
-                    <button type="button" onClick={() => onAdjust(-1)} className="p-0.5 hover:bg-slate-100 rounded text-slate-900 transition-colors"><ChevronDown size={14} /></button>
+    const DateTimeField = ({ label, value, type, onChange, onAdjust }: { label: string, value: string, type: string, onChange: (v: string) => void, onAdjust: (dir: number) => void }) => {
+        const dateInputRef = React.useRef<HTMLInputElement>(null);
+
+        const toDisplay = (val: string) => {
+            if (type !== 'date' || !val || !val.includes('-')) return val;
+            const parts = val.split('-');
+            if (parts[0].length === 3 || parts[0].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            return val;
+        };
+
+        const [localInputValue, setLocalInputValue] = useState(toDisplay(value));
+
+        useEffect(() => {
+            setLocalInputValue(toDisplay(value));
+        }, [value]);
+
+        const handleType = (text: string) => {
+            const isDeleting = localInputValue.length > text.length;
+
+            if (type === 'date') {
+                const digits = text.replace(/\D/g, '').slice(0, 8);
+                let formatted = "";
+                if (digits.length > 0) {
+                    formatted += digits.substring(0, 2);
+                    if (digits.length > 2) {
+                        formatted += "-" + digits.substring(2, 4);
+                        if (digits.length > 4) {
+                            formatted += "-" + digits.substring(4, 8);
+                        }
+                    }
+                }
+
+                if (isDeleting && localInputValue.endsWith("-") && text.length === localInputValue.length - 1) {
+                    setLocalInputValue(text);
+                    return;
+                }
+
+                setLocalInputValue(formatted);
+                if (formatted.length === 10) {
+                    const parts = formatted.split('-');
+                    onChange(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                }
+            } else if (type === 'time') {
+                const digits = text.replace(/\D/g, '').slice(0, 4);
+                let formatted = "";
+                if (digits.length > 0) {
+                    formatted += digits.substring(0, 2);
+                    if (digits.length > 2) {
+                        formatted += ":" + digits.substring(2, 4);
+                    }
+                }
+
+                if (isDeleting && localInputValue.endsWith(":") && text.length === localInputValue.length - 1) {
+                    setLocalInputValue(text);
+                    return;
+                }
+
+                setLocalInputValue(formatted);
+                if (formatted.length === 5) {
+                    onChange(formatted);
+                }
+            } else {
+                setLocalInputValue(text);
+                onChange(text);
+            }
+        };
+
+        return (
+            <div className="space-y-1 flex-1 relative group">
+                <label className="text-[10px] font-bold uppercase text-slate-500">{label}</label>
+                <div className="relative">
+                    <input
+                        type="text"
+                        placeholder={type === 'date' ? "DD-MM-YYYY" : "HH:MM"}
+                        className="w-full p-3 pr-20 rounded-xl border-2 border-blue-50 focus:ring-4 focus:ring-[#1500FF]/10 focus:border-[#1500FF] outline-none font-semibold text-slate-800 bg-white transition-all shadow-sm text-sm"
+                        value={localInputValue}
+                        onChange={e => handleType(e.target.value)}
+                    />
+
+                    <input
+                        type={type}
+                        ref={dateInputRef}
+                        className="absolute inset-0 opacity-0 pointer-events-none w-0 h-0"
+                        value={value}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            onChange(val);
+                            setLocalInputValue(toDisplay(val));
+                        }}
+                    />
+
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        <button
+                            type="button"
+                            onClick={() => (dateInputRef.current as any)?.showPicker?.()}
+                            className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors"
+                        >
+                            {type === 'date' ? <Calendar size={16} /> : <Clock size={16} />}
+                        </button>
+
+                        <div className="flex flex-col gap-0.5 border-l border-slate-100 pl-1">
+                            <button type="button" onClick={() => onAdjust(1)} className="p-0.5 hover:bg-slate-100 rounded text-slate-900 transition-colors"><ChevronUp size={14} /></button>
+                            <button type="button" onClick={() => onAdjust(-1)} className="p-0.5 hover:bg-slate-100 rounded text-slate-900 transition-colors"><ChevronDown size={14} /></button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     return (
         <div className="min-h-screen pb-12 bg-[#F8FAFC]">
@@ -573,10 +666,10 @@ export default function TicketsPage() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="max-w-[1600px] mx-auto px-4 md:px-8 pt-6 space-y-6"
+                className="max-w-[1600px] mx-auto px-4 md:px-8 pt-6 space-y-1"
             >
                 {/* 1. Controls Row */}
-                <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-6">
                     <div className="relative w-full md:max-w-md group">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#1500FF] transition-colors" size={20} />
                         <input
@@ -603,16 +696,16 @@ export default function TicketsPage() {
                     </div>
                 </div>
 
-                {/* 2. Filters Row */}
-                <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+                {/* 2. Filters Row - Balanced gap & room for corners */}
+                <div className="flex items-center gap-2 overflow-x-auto pt-2 pb-3 scrollbar-hide px-4 md:px-0">
                     <FilterTab label="All Tickets" isActive={activeTab === "All"} onClick={() => handleTabChange("All")} count={roleFilteredTickets.length} />
                     {(["New", "In Progress", "Pending", "Overdue", "Done", "Closed"] as TicketStatus[]).map(s => (
                         <FilterTab key={s} label={s} isActive={activeTab === s} onClick={() => handleTabChange(s)} count={roleFilteredTickets.filter(t => t.status === s).length} />
                     ))}
                 </div>
 
-                {/* 3. Ticket Content */}
-                <div className="relative overflow-hidden min-h-[400px]">
+                {/* 3. Ticket Content - Balanced gap */}
+                <div className="relative min-h-[400px] pt-5 pb-8">
                     <AnimatePresence initial={false} mode="wait" custom={direction}>
                         <motion.div
                             key={activeTab + viewMode}
