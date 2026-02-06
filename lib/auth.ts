@@ -17,14 +17,14 @@ const DEFAULT_USERS = [
         password: "joki123",
         name: "Admin Joki",
         role: ROLES.PRODUCT_ADMIN,
-        productId: "joki"
+        productId: "joki-informatika"
     },
     {
         email: "orbitbilliard.id@gmail.com",
         password: "orbit123",
         name: "Admin Orbit",
         role: ROLES.PRODUCT_ADMIN,
-        productId: "orbit"
+        productId: "orbit-billiard"
     },
     {
         email: "hi@catatmak.com",
