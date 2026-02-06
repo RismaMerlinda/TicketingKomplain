@@ -58,7 +58,9 @@ const getStatusStyles = (status: TicketStatus) => {
         case "Pending": return { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200", icon: MoreHorizontal, accent: "bg-slate-400" };
         case "Overdue": return { bg: "bg-slate-900", text: "text-white", border: "border-slate-800", icon: AlertCircle, accent: "bg-black" };
         case "Done": return { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100", icon: CheckCircle2, accent: "bg-emerald-500" };
+        case "Resolved": return { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100", icon: CheckCircle2, accent: "bg-emerald-500" };
         case "Closed": return { bg: "bg-[#EFEBE9]", text: "text-[#4E342E]", border: "border-[#D7CCC8]", icon: XCircle, accent: "bg-[#3E2723]" };
+        default: return { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-100", icon: AlertCircle, accent: "bg-blue-500" };
     }
 };
 
@@ -355,8 +357,8 @@ export default function TicketsPage() {
     const [viewMode, setViewMode] = useState<ViewMode>("GRID");
 
     useEffect(() => {
-        const loadTickets = () => {
-            const stored = getStoredTickets();
+        const loadTickets = async () => {
+            const stored = await getStoredTickets();
             setTickets(stored);
         };
 
@@ -425,12 +427,12 @@ export default function TicketsPage() {
         return matchesTab && matchesSearch;
     });
 
-    const handleAddTicket = () => {
+    const handleAddTicket = async () => {
         // Validation: All fields mandatory
         if (!newTicket.title || !newTicket.customer || !newTicket.description || !newTicket.priority || !newTicket.source || !startDate || !startTime || !endDate || !endTime) {
             setAlertModal({
                 isOpen: true,
-                message: "Aksi Ditolak! Harap lengkapi semua data formulir (Judul, Pelanggan, Prioritas, Sumber, Jadwal, dan Deskripsi) sebelum menyimpan."
+                message: "Action Denied! Please complete all form fields (Subject, Customer, Priority, Source, Schedule, and Description) before saving."
             });
             return;
         }
@@ -442,81 +444,92 @@ export default function TicketsPage() {
         if (!effectiveProduct) {
             setAlertModal({
                 isOpen: true,
-                message: "Harap pilih produk yang sesuai!"
+                message: "Please select a valid product!"
             });
             return;
         }
 
         const now = new Date();
-        const productInfo = (user?.role === ROLES.PRODUCT_ADMIN && user?.productId)
-            ? products[user.productId as keyof typeof products]
-            : null;
-
-        const ticket: TicketData = {
-            id: Math.random().toString(36).substr(2, 9),
-            code: `TCK-${Math.floor(1000 + Math.random() * 9000)}`,
-            status: "New",
+        const ticket = {
             title: newTicket.title,
             description: newTicket.description,
             product: effectiveProduct as any,
             source: (newTicket.source as TicketSource) || "WhatsApp",
             priority: (newTicket.priority as TicketPriority) || "Medium",
-            prioritySetAt: now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }) + " · " + now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }),
-            responseDue: (startDate && startTime) ? `${new Date(startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' })} · ${startTime}` : "ASAP",
-            resolveDue: (endDate && endTime) ? `${new Date(endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' })} · ${endTime}` : "TBD",
-            createdAt: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + " WIB",
-            customer: newTicket.customer
+            customer: newTicket.customer,
+            startDate,
+            startTime,
+            endDate,
+            endTime
         };
 
-        addTicket(ticket);
+        const success = await addTicket(ticket);
 
-        // Log Activity
-        logActivity(
-            `Created new ticket ${ticket.code}: ${ticket.title}`,
-            user?.name || "System",
-            (user?.role === ROLES.PRODUCT_ADMIN && user?.productId) ? user.productId : (newTicket.product?.toLowerCase() || "catatmak")
-        );
+        if (success) {
+            // Log Activity
+            logActivity(
+                `Created new ticket ${newTicket.title}`,
+                user?.name || "System",
+                (user?.role === ROLES.PRODUCT_ADMIN && user?.productId) ? user.productId : (newTicket.product?.toLowerCase() || "catatmak")
+            );
 
-        setIsAddModalOpen(false);
-        setNewTicket({ priority: "Medium", source: "WhatsApp", product: "Catatmak", status: "New", title: "", description: "", customer: "" });
-        setStartDate(""); setStartTime("");
-        setEndDate(""); setEndTime("");
+            setIsAddModalOpen(false);
+            setNewTicket({ priority: "Medium", source: "WhatsApp", product: "Catatmak", status: "New", title: "", description: "", customer: "" });
+            setStartDate(""); setStartTime("");
+            setEndDate(""); setEndTime("");
+
+            // Refresh tickets
+            const updated = await getStoredTickets();
+            setTickets(updated);
+        } else {
+            setAlertModal({ isOpen: true, message: "Failed to save ticket to the database!" });
+        }
     };
 
-    const handleStatusChange = (id: string, newStatus: TicketStatus) => {
+    const handleStatusChange = async (id: string, newStatus: TicketStatus) => {
         const ticket = tickets.find(t => t.id === id);
         if (ticket) {
             const updated = { ...ticket, status: newStatus };
-            updateTicket(updated);
-            if (selectedTicket?.id === id) setSelectedTicket(updated);
+            const success = await updateTicket(updated);
 
-            // Find productId from products object based on product name
-            const prodId = Object.keys(products).find(key => products[key].name === ticket.product) || null;
+            if (success) {
+                // Find productId from products object based on product name
+                const prodId = Object.keys(products).find(key => products[key].name === ticket.product) || null;
 
-            // Log Activity
-            logActivity(
-                `Ticket ${ticket.code} status changed to ${newStatus}`,
-                user?.name || "System",
-                prodId
-            );
+                // Log Activity
+                logActivity(
+                    `Ticket ${ticket.code} status changed to ${newStatus}`,
+                    user?.name || "System",
+                    prodId
+                );
+
+                // Update local state
+                const latest = await getStoredTickets();
+                setTickets(latest);
+                if (selectedTicket?.id === id) setSelectedTicket(updated);
+            }
         }
     };
 
-    const handleDeleteTicket = (id: string) => {
+    const handleDeleteTicket = async (id: string) => {
         const ticketToDelete = tickets.find(t => t.id === id);
-        deleteTicket(id);
-        setSelectedTicket(null);
+        const success = await deleteTicket(id);
 
-        // Log Activity
-        if (ticketToDelete) {
-            const prodId = Object.keys(products).find(key => products[key].name === ticketToDelete.product) || null;
-            logActivity(
-                `Deleted ticket ${ticketToDelete.code}: ${ticketToDelete.title}`,
-                user?.name || "System",
-                prodId
-            );
+        if (success) {
+            setSelectedTicket(null);
+            // Log Activity
+            if (ticketToDelete) {
+                const prodId = Object.keys(products).find(key => products[key].name === ticketToDelete.product) || null;
+                logActivity(
+                    `Deleted ticket ${ticketToDelete.code}: ${ticketToDelete.title}`,
+                    user?.name || "System",
+                    prodId
+                );
+            }
+            // Update local state
+            const latest = await getStoredTickets();
+            setTickets(latest);
         }
-
         setDeleteModal({ isOpen: false, ticketId: null });
     };
 
@@ -687,21 +700,20 @@ export default function TicketsPage() {
                                     <input type="text" className="w-full p-3 rounded-xl border-2 border-blue-50 bg-white focus:ring-4 focus:ring-[#1500FF]/10 focus:border-[#1500FF] outline-none font-semibold text-slate-800 transition-all" placeholder="e.g. John Doe" value={newTicket.customer} onChange={e => setNewTicket(prev => ({ ...prev, customer: e.target.value }))} />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    {(user?.role !== ROLES.PRODUCT_ADMIN) && (
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold uppercase text-slate-500">Product <span className="text-rose-500">*</span></label>
-                                            <select
-                                                className="w-full p-3 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#1500FF]/20 outline-none"
-                                                value={newTicket.product}
-                                                onChange={e => setNewTicket(prev => ({ ...prev, product: e.target.value }))}
-                                            >
-                                                {Object.values(products).map(p => (
-                                                    <option key={p.id} value={p.name}>{p.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    )}
-                                    <div className={user?.role === ROLES.PRODUCT_ADMIN ? "col-span-2 space-y-1" : "space-y-1"}>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold uppercase text-slate-500">Product <span className="text-rose-500">*</span></label>
+                                        <select
+                                            className="w-full p-3 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#1500FF]/20 outline-none disabled:bg-slate-50 disabled:text-slate-400"
+                                            value={user?.role === ROLES.PRODUCT_ADMIN ? products[user.productId as string]?.name : (newTicket.product || "Catatmak")}
+                                            disabled={user?.role === ROLES.PRODUCT_ADMIN}
+                                            onChange={e => setNewTicket(prev => ({ ...prev, product: e.target.value }))}
+                                        >
+                                            {Object.values(products).map(p => (
+                                                <option key={p.id} value={p.name}>{p.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
                                         <label className="text-xs font-bold uppercase text-slate-500">Priority <span className="text-rose-500">*</span></label>
                                         <select className="w-full p-3 rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold focus:ring-2 focus:ring-[#1500FF]/20 outline-none" value={newTicket.priority} onChange={e => setNewTicket(prev => ({ ...prev, priority: e.target.value as TicketPriority }))}>
                                             <option>Low</option><option>Medium</option><option>High</option>

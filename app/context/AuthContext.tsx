@@ -17,10 +17,10 @@ export interface User {
 interface AuthContextType {
     user: User | null;
     isLoading: boolean;
-    login: (email: string, password: string) => boolean;
+    login: (email: string, password: string) => Promise<boolean>;
     logout: () => void;
-    updatePassword: (oldPassword: string, newPassword: string) => { success: boolean, message: string };
-    updateUser: (updates: Partial<User>) => void;
+    updatePassword: (oldPassword: string, newPassword: string) => Promise<{ success: boolean, message: string }>;
+    updateUser: (updates: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -53,21 +53,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
-    const login = (email: string, password: string) => {
-        const validUser = validateUser(email, password);
+    const login = async (email: string, password: string) => {
+        try {
+            const response = await fetch('http://localhost:5900/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password }),
+            });
 
-        if (validUser) {
-            const newUser: User = {
-                email: validUser.email,
-                name: validUser.name,
-                role: validUser.role as UserRole,
-                productId: validUser.productId
-            };
-            localStorage.setItem("ticketing_user", JSON.stringify(newUser));
-            setUser(newUser);
-            router.push("/dashboard");
-            return true;
-        } else {
+            const data = await response.json();
+
+            if (data.success) {
+                const newUser: User = {
+                    email: data.user.email,
+                    name: data.user.name,
+                    role: data.user.role as UserRole,
+                    productId: data.user.productId,
+                    avatar: data.user.avatar
+                };
+                localStorage.setItem("ticketing_user", JSON.stringify(newUser));
+                setUser(newUser);
+                router.push("/dashboard");
+                return true;
+            } else {
+                return false;
+            }
+        } catch (error) {
+            console.error("Login error:", error);
             return false;
         }
     };
@@ -78,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push("/login");
     };
 
-    const updatePassword = (oldPassword: string, newPassword: string) => {
+    const updatePassword = async (oldPassword: string, newPassword: string) => {
         if (!user) return { success: false, message: "User not found" };
 
         const storedUsersStr = localStorage.getItem('ticketing_users');
@@ -104,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, message: "Failed to update password" };
     };
 
-    const updateUser = (updates: Partial<User>) => {
+    const updateUser = async (updates: Partial<User>) => {
         if (!user) return;
 
         const updatedUser = { ...user, ...updates };

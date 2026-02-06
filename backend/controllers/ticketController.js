@@ -15,10 +15,18 @@ exports.createTicket = async (req, res) => {
     try {
         const ticketData = req.body;
 
-        // Auto-generate Code if not provided (Simplistic)
+        // Auto-generate Code per Product with Unique Prefix
         if (!ticketData.code) {
-            const count = await Ticket.countDocuments();
-            ticketData.code = `TKT-${String(count + 1).padStart(4, '0')}`;
+            let prefix = 'TKT';
+            const productName = (ticketData.product || "").toLowerCase();
+
+            if (productName.includes('joki')) prefix = 'JKI';
+            else if (productName.includes('orbit')) prefix = 'ORB';
+            else if (productName.includes('catatmak')) prefix = 'CMK';
+
+            // Count only tickets for this specific product to get independent sequence
+            const count = await Ticket.countDocuments({ product: ticketData.product });
+            ticketData.code = `${prefix}-${String(count + 1).padStart(4, '0')}`;
         }
 
         const newTicket = new Ticket(ticketData);

@@ -24,9 +24,9 @@ export default function LoginPage() {
     const [formData, setFormData] = useState({ email: "", password: "" });
     const [showLoginError, setShowLoginError] = useState(false);
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        const success = login(formData.email, formData.password);
+        const success = await login(formData.email, formData.password);
         if (!success) {
             setShowLoginError(true);
         }

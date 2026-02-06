@@ -13,25 +13,25 @@ const DEFAULT_USERS = [
         productId: null
     },
     {
-        email: "admin@adminorbit.co.id",
-        password: "password123",
+        email: "jokiinformatika@gmail.com",
+        password: "joki123",
+        name: "Admin Joki",
+        role: ROLES.PRODUCT_ADMIN,
+        productId: "joki"
+    },
+    {
+        email: "orbitbilliard.id@gmail.com",
+        password: "orbit123",
         name: "Admin Orbit",
         role: ROLES.PRODUCT_ADMIN,
         productId: "orbit"
     },
     {
-        email: "admin@admincatatmak.co.id",
-        password: "password123",
+        email: "hi@catatmak.com",
+        password: "catatmak123",
         name: "Admin Catatmak",
         role: ROLES.PRODUCT_ADMIN,
         productId: "catatmak"
-    },
-    {
-        email: "admin@jokiinformatika.co.id",
-        password: "password123",
-        name: "Admin Joki",
-        role: ROLES.PRODUCT_ADMIN,
-        productId: "joki"
     }
 ];
 

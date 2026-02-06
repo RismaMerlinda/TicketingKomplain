@@ -87,8 +87,8 @@ export interface ProductData {
 }
 
 export const MOCK_PRODUCTS: Record<string, ProductData> = {
-    orbit: {
-        id: "orbit",
+    "orbit-billiard": {
+        id: "orbit-billiard",
         name: "Orbit Billiard",
         description: "Billiard management system",
         adminEmail: "admin@adminorbit.co.id",
@@ -141,8 +141,8 @@ export const MOCK_PRODUCTS: Record<string, ProductData> = {
             { text: "New premium subscription #CM-900", time: "3 hrs ago", user: "System" }
         ]
     },
-    joki: {
-        id: "joki",
+    "joki-informatika": {
+        id: "joki-informatika",
         name: "Joki Informatika",
         description: "Academic assistance platform",
         adminEmail: "admin@adminjoki.co.id",

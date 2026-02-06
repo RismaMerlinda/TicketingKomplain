@@ -281,8 +281,8 @@ function DashboardContent() {
 
     // Load Tickets for real stats
     useEffect(() => {
-        const loadTickets = () => {
-            const t = getStoredTickets();
+        const loadTickets = async () => {
+            const t = await getStoredTickets();
             setRealTickets(t);
         };
         loadTickets();
