@@ -273,23 +273,25 @@ export default function ProductsPage() {
                 {/* Controls */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="relative w-full md:w-96 group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-[#1500FF] transition-colors" size={20} />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#1500FF] transition-colors duration-300" size={20} />
                         <input
                             type="text"
                             placeholder="Search products..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1500FF]/20 focus:border-[#1500FF] transition-all text-slate-800 placeholder:text-slate-400"
+                            className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1500FF]/10 focus:border-[#1500FF] transition-all duration-300 text-slate-800 placeholder:text-slate-400 shadow-sm hover:shadow-md"
                         />
                     </div>
                     {user?.role === ROLES.SUPER_ADMIN && (
-                        <button
+                        <motion.button
+                            whileHover={{ scale: 1.05, boxShadow: "0 20px 25px -5px rgb(21 0 255 / 0.3)" }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={handleAddClick}
-                            className="flex items-center gap-2 bg-[#1500FF] hover:bg-slate-900 text-white px-6 py-3 rounded-xl font-bold transition-all duration-300 text-sm active:scale-95"
+                            className="flex items-center gap-2 bg-gradient-to-r from-[#1500FF] to-[#2EA9FF] text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20"
                         >
-                            <Plus size={20} />
+                            <Plus size={20} strokeWidth={3} />
                             Add New Product
-                        </button>
+                        </motion.button>
                     )}
                 </div>
 
@@ -300,49 +302,58 @@ export default function ProductsPage() {
                             <motion.div
                                 key={product.id}
                                 layout
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm hover:shadow-md transition-all duration-300 group flex flex-col"
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                                className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 group flex flex-col relative overflow-hidden"
                             >
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="w-12 h-12 bg-slate-50 rounded-xl text-slate-400 transition-all duration-300 flex items-center justify-center overflow-hidden border border-slate-100">
+                                {/* Decorative Gradient Blob */}
+                                <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-colors duration-500" />
+
+                                <div className="flex items-center justify-between mb-6 relative z-10">
+                                    <motion.div
+                                        whileHover={{ rotate: 10, scale: 1.1 }}
+                                        className="w-14 h-14 bg-white rounded-2xl text-slate-400 flex items-center justify-center overflow-hidden border border-slate-100 shadow-sm group-hover:border-blue-100 group-hover:shadow-blue-200 transition-all duration-300"
+                                    >
                                         {product.icon ? (
                                             // eslint-disable-next-line @next/next/no-img-element
                                             <img src={product.icon} alt={product.name} className="w-full h-full object-cover" />
                                         ) : (
-                                            <Package size={24} />
+                                            <Package size={28} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
                                         )}
-                                    </div>
+                                    </motion.div>
                                     <div className="flex gap-2">
-                                        <button
+                                        <motion.button
+                                            whileHover={{ rotate: 90, color: "#1500FF", backgroundColor: "#eff6ff" }}
+                                            whileTap={{ scale: 0.9 }}
                                             onClick={() => handleEditClick(product)}
-                                            className="p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+                                            className="p-2 text-slate-300 rounded-xl transition-colors"
                                             title="Manage Access"
                                         >
-                                            <Settings size={18} />
-                                        </button>
+                                            <Settings size={20} />
+                                        </motion.button>
                                     </div>
                                 </div>
 
-                                <div className="flex-1">
-                                    <h3 className="font-bold text-lg text-slate-800 mb-1 transition-colors">{product.name}</h3>
-                                    <p className="text-sm text-slate-400 line-clamp-2 mb-4">{product.description || "No description provided."}</p>
+                                <div className="flex-1 relative z-10">
+                                    <h3 className="font-bold text-lg text-slate-800 mb-1 group-hover:text-[#1500FF] transition-colors">{product.name}</h3>
+                                    <p className="text-sm text-slate-400 line-clamp-2 mb-6 h-10">{product.description || "No description provided."}</p>
 
-                                    <div className="grid grid-cols-2 gap-4 mb-6">
+                                    <div className="grid grid-cols-2 gap-3 mb-8">
                                         {(() => {
                                             const pTickets = tickets.filter(t => t.product === product.name);
                                             const pTotal = pTickets.length;
                                             const pActive = pTickets.filter(t => ['New', 'In Progress', 'Pending', 'Overdue'].includes(t.status)).length;
                                             return (
                                                 <>
-                                                    <div className="p-3 bg-slate-50 rounded-xl">
-                                                        <p className="text-[10px] uppercase text-slate-400 font-bold mb-1">Tickets</p>
-                                                        <p className="font-extrabold text-slate-700">{pTotal}</p>
+                                                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 group-hover:border-blue-100 group-hover:bg-blue-50/30 transition-colors">
+                                                        <p className="text-[10px] uppercase text-slate-400 font-bold mb-1 tracking-wider">Tickets</p>
+                                                        <p className="font-extrabold text-2xl text-slate-700 group-hover:text-[#1500FF] transition-colors">{pTotal}</p>
                                                     </div>
-                                                    <div className="p-3 bg-slate-50 rounded-xl border border-transparent transition-colors">
-                                                        <p className="text-[10px] uppercase text-slate-400 font-bold mb-1">Active</p>
-                                                        <p className="font-extrabold text-slate-700">{pActive}</p>
+                                                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 group-hover:border-blue-100 group-hover:bg-blue-50/30 transition-colors">
+                                                        <p className="text-[10px] uppercase text-slate-400 font-bold mb-1 tracking-wider">Active</p>
+                                                        <p className="font-extrabold text-2xl text-slate-700 group-hover:text-[#1500FF] transition-colors">{pActive}</p>
                                                     </div>
                                                 </>
                                             )
@@ -350,13 +361,28 @@ export default function ProductsPage() {
                                     </div>
                                 </div>
 
-                                <button
+                                <motion.button
                                     onClick={() => router.push(`/dashboard?product=${product.id}`)}
-                                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 hover:text-slate-800 transition-all text-sm"
+                                    whileHover="hover"
+                                    initial="rest"
+                                    animate="rest"
+                                    variants={{
+                                        rest: { scale: 1, backgroundColor: "#ffffff", borderColor: "#e2e8f0", color: "#475569" },
+                                        hover: { scale: 1.02, backgroundColor: "#1500FF", borderColor: "#1500FF", color: "#ffffff" }
+                                    }}
+                                    className="w-full flex items-center justify-between px-6 py-3.5 rounded-xl border font-bold transition-all text-sm shadow-sm relative z-10 overflow-hidden group/btn"
                                 >
-                                    View Dashboard
-                                    <ArrowRight size={16} className="text-slate-400" />
-                                </button>
+                                    <span className="relative z-10">View Dashboard</span>
+                                    <motion.div
+                                        variants={{
+                                            rest: { x: 0 },
+                                            hover: { x: 5 }
+                                        }}
+                                        transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                                    >
+                                        <ArrowRight size={18} className="relative z-10 opacity-70 group-hover/btn:opacity-100" />
+                                    </motion.div>
+                                </motion.button>
                             </motion.div>
                         ))}
                     </AnimatePresence>
@@ -365,13 +391,18 @@ export default function ProductsPage() {
                     {user?.role === ROLES.SUPER_ADMIN && (
                         <motion.div
                             onClick={handleAddClick}
-                            whileHover={{ scale: 1.02 }}
-                            className="cursor-pointer border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-8 text-slate-400 hover:border-[#1500FF]/40 hover:text-[#1500FF] hover:bg-[#1500FF]/5 transition-all h-full min-h-[300px]"
+                            whileHover={{ scale: 1.02, backgroundColor: "rgba(239, 246, 255, 0.5)", borderColor: "rgba(21, 0, 255, 0.4)" }}
+                            whileTap={{ scale: 0.98 }}
+                            className="cursor-pointer border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center p-8 text-slate-400 transition-all h-full min-h-[300px] group"
                         >
-                            <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4 group-hover:bg-white border border-transparent group-hover:border-[#1500FF]/20 shadow-sm transition-all">
-                                <Plus size={32} />
-                            </div>
-                            <p className="font-bold text-sm">Add New Product</p>
+                            <motion.div
+                                whileHover={{ scale: 1.1, rotate: 90 }}
+                                className="w-20 h-20 rounded-full bg-white flex items-center justify-center mb-6 border-2 border-slate-100 shadow-sm group-hover:border-blue-200 group-hover:shadow-blue-200 transition-all"
+                            >
+                                <Plus size={40} className="text-slate-300 group-hover:text-[#1500FF] transition-colors" />
+                            </motion.div>
+                            <p className="font-bold text-lg text-slate-500 group-hover:text-[#1500FF] transition-colors">Add New Product</p>
+                            <p className="text-xs text-slate-400 text-center mt-2 max-w-[200px]">Create a new workspace and assign admin access</p>
                         </motion.div>
                     )}
                 </div>
