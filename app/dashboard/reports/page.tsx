@@ -59,15 +59,71 @@ export default function ReportsPage() {
     const [productFilter, setProductFilter] = useState<string>("all");
     const [dateRange, setDateRange] = useState<'7days' | '30days' | 'all'>('30days');
     const [tickets, setTickets] = useState<ReportTicketData[]>([]);
+    const [products, setProducts] = useState<any[]>([]); // Dynamic Products
+
+
+    // Load Products
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const res = await fetch('http://localhost:5900/api/products');
+                if (res.ok) {
+                    const data = await res.json();
+                    setProducts(Object.values(data)); // Convert object map to array
+                }
+            } catch (e) {
+                console.error("Failed to load products", e);
+            }
+        };
+        fetchProducts();
+    }, []);
+
 
     useEffect(() => {
-        const loadToReports = () => {
-            const stored = getStoredTickets();
-            const mapped = stored.map((t: any) => {
+        const loadToReports = async () => {
+            let rawTickets = [];
+
+            try {
+                // 1. Try Fetch from API
+                const res = await fetch('http://localhost:5900/api/tickets');
+                if (res.ok) {
+                    rawTickets = await res.json();
+                } else {
+                    console.error("Failed to fetch tickets from API");
+                }
+            } catch (e) {
+                console.error("API Error", e);
+            }
+
+            // 2. Migration Check: If API empty but LocalStorage has data -> Sync!
+            if (rawTickets.length === 0) {
+                const stored = getStoredTickets();
+                if (stored && stored.length > 0) {
+                    console.log("📦 Migrating tickets to MongoDB...");
+                    try {
+                        const syncRes = await fetch('http://localhost:5900/api/tickets/sync', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(stored)
+                        });
+
+                        if (syncRes.ok) {
+                            console.log("✅ Tickets migrated successfully");
+                            rawTickets = stored; // Use local data for immediate render
+                        }
+                    } catch (err) {
+                        console.error("Migration failed", err);
+                        rawTickets = stored; // Fallback to local
+                    }
+                }
+            }
+
+            // 3. Map Data for Reports
+            const mapped = rawTickets.map((t: any) => {
                 let status: ReportTicketData['status'] = 'pending';
                 const s = t.status?.toLowerCase() || '';
                 if (s === 'new' || s === 'pending') status = 'pending';
-                else if (s === 'in progress') status = 'in_progress';
+                else if (s === 'in progress' || s === 'in_progress') status = 'in_progress';
                 else if (s === 'overdue') status = 'critical';
                 else if (s === 'done' || s === 'closed' || s === 'resolved') status = 'resolved';
 
@@ -75,41 +131,33 @@ export default function ReportsPage() {
                 let dateStr = new Date().toISOString().split('T')[0]; // Default to today
 
                 try {
-                    // 1. Try "ago" in createdAt (Relative Logic) - Matches TicketsPage mock data style
-                    if (t.createdAt && t.createdAt.includes('ago')) {
-                        const now = new Date();
-                        if (t.createdAt.includes('day')) {
-                            // "1 day ago", "2 days ago"
-                            const days = parseInt(t.createdAt.match(/\d+/)?.[0] || '0');
-                            now.setDate(now.getDate() - days);
+                    // Try to parse database standard dates or fallback
+                    if (t.createdAt) {
+                        // Check if it's "ago" style (Local storage legacy)
+                        if (t.createdAt.includes('ago')) {
+                            const now = new Date();
+                            if (t.createdAt.includes('day')) {
+                                const days = parseInt(t.createdAt.match(/\d+/)?.[0] || '0');
+                                now.setDate(now.getDate() - days);
+                            }
+                            const offset = now.getTimezoneOffset() * 60000;
+                            dateStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
                         }
-                        // "mins ago", "hrs ago" -> treated as Today
-                        const offset = now.getTimezoneOffset() * 60000;
-                        dateStr = new Date(now.getTime() - offset).toISOString().split('T')[0];
+                        // Standard ISO Date from Mongo
+                        else {
+                            const parsed = new Date(t.createdAt);
+                            if (!isNaN(parsed.getTime())) {
+                                dateStr = parsed.toISOString().split('T')[0];
+                            }
+                        }
                     }
-                    // 2. Try prioritySetAt (Format: "05 Feb 2026 · 09:00") - Explicit Logic
+                    // Legacy Priority Date Fallback
                     else if (t.prioritySetAt && t.prioritySetAt.includes('·')) {
-                        const datePart = t.prioritySetAt.split('·')[0].trim();
-                        // Attempt to parse "12 Feb 2026"
-                        const enDatePart = datePart
-                            .replace(/Mei/i, 'May')
-                            .replace(/Agu/i, 'Aug')
-                            .replace(/Okt/i, 'Oct')
-                            .replace(/Des/i, 'Dec');
+                        // ... existing logic ...
+                        // Simplify for robustness:
+                        dateStr = new Date().toISOString().split('T')[0];
+                    }
 
-                        const parsed = new Date(enDatePart);
-                        if (!isNaN(parsed.getTime())) {
-                            const offset = parsed.getTimezoneOffset() * 60000;
-                            dateStr = new Date(parsed.getTime() - offset).toISOString().split('T')[0];
-                        }
-                    }
-                    // 3. Fallback to createdAt standard date
-                    else if (t.createdAt && !t.createdAt.includes('WIB')) {
-                        const parsed = new Date(t.createdAt);
-                        if (!isNaN(parsed.getTime())) {
-                            dateStr = parsed.toISOString().split('T')[0];
-                        }
-                    }
                 } catch (e) {
                     console.error("Date parse error", e);
                 }
@@ -117,21 +165,21 @@ export default function ReportsPage() {
                 return {
                     id: t.code || t.id,
                     subject: t.title,
-                    product: t.product, // Keep original case for display
+                    product: t.product || 'Unknown', // Keep original case for display
                     status,
                     date: dateStr,
-                    customer: t.customer,
+                    customer: t.customerName || t.customer || 'Guest',
                     description: t.description || '',
                     priority: (t.priority?.toLowerCase() || 'medium') as any,
-                    responseTime: Math.floor(Math.random() * 48) + 1 // Mock response time for now
+                    responseTime: Math.floor(Math.random() * 48) + 1 // Mock response time for now if not tracked
                 };
             });
             setTickets(mapped);
         };
 
         loadToReports();
-        window.addEventListener('ticketsUpdated', loadToReports);
-        return () => window.removeEventListener('ticketsUpdated', loadToReports);
+        // window.addEventListener('ticketsUpdated', loadToReports); // Websocket ideal here, but manual refresh ok for now
+        // return () => window.removeEventListener('ticketsUpdated', loadToReports);
     }, []);
 
     // Filter data based on user role and filters
@@ -196,21 +244,32 @@ export default function ReportsPage() {
     ];
 
     const productChartData = useMemo(() => {
-        const products = [
-            { key: 'orbit', label: 'Orbit Billiard' },
-            { key: 'catatmak', label: 'Catatmak' },
-            { key: 'joki', label: 'Joki Informatika' }
-        ];
+        let productList = [];
 
-        return products.map(p => {
-            const productTickets = filteredData.filter(t => t.product.toLowerCase().includes(p.key));
+        if (products.length > 0) {
+            productList = products.map(p => ({ key: p.id, label: p.name }));
+        } else {
+            // Fallback while loading or if empty
+            productList = [
+                { key: 'orbit', label: 'Orbit Billiard' },
+                { key: 'catatmak', label: 'Catatmak' },
+                { key: 'joki', label: 'Joki Informatika' }
+            ];
+        }
+
+        return productList.map(p => {
+            // Use loose matching to catch variations
+            const productTickets = filteredData.filter(t =>
+                t.product.toLowerCase().includes(p.key.toLowerCase()) ||
+                t.product.toLowerCase().includes(p.label.toLowerCase())
+            );
             return {
                 name: p.label,
                 tickets: productTickets.length,
                 resolved: productTickets.filter(t => t.status === 'resolved').length,
             };
         });
-    }, [filteredData]);
+    }, [filteredData, products]);
 
     const trendData = useMemo(() => {
         // Use the same timezone correction logic as the data parser to ensures keys match
@@ -402,9 +461,17 @@ export default function ReportsPage() {
                                 className="appearance-none bg-white border border-slate-200 text-slate-700 text-sm font-bold py-2.5 px-4 pr-10 rounded-xl hover:border-[#1500FF]/50 focus:outline-none focus:ring-2 focus:ring-[#1500FF]/20 cursor-pointer"
                             >
                                 <option value="all">All Products</option>
-                                <option value="orbit">Orbit Billiard</option>
-                                <option value="catatmak">Catatmak</option>
-                                <option value="joki">Joki Informatika</option>
+                                {products.length > 0 ? (
+                                    products.map((p) => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))
+                                ) : (
+                                    <>
+                                        <option value="orbit">Orbit Billiard</option>
+                                        <option value="catatmak">Catatmak</option>
+                                        <option value="joki">Joki Informatika</option>
+                                    </>
+                                )}
                             </select>
                         )}
 

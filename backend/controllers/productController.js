@@ -1,7 +1,8 @@
 const Product = require('../models/Product');
 const User = require('../models/User'); // Import User Model
+const Ticket = require('../models/Ticket'); // Import Ticket Model (NEW)
 
-// Helper to sync admin user
+// Using Helper to sync admin user (No change here)
 const syncAdminUser = async (productData) => {
     try {
         if (!productData.adminEmail || !productData.adminPassword) return;
@@ -30,9 +31,37 @@ exports.getProducts = async (req, res) => {
     try {
         const products = await Product.find();
 
+        // 1. Fetch ticket stats Aggregation
+        const ticketStats = await Ticket.aggregate([
+            {
+                $group: {
+                    _id: "$product", // Group by Product ID
+                    total: { $sum: 1 },
+                    active: {
+                        $sum: {
+                            $cond: [{ $in: ["$status", ["new", "pending", "in_progress", "critical", "open"]] }, 1, 0]
+                        }
+                    },
+                    resolved: {
+                        $sum: {
+                            $cond: [{ $in: ["$status", ["resolved", "closed"]] }, 1, 0]
+                        }
+                    }
+                }
+            }
+        ]);
+
+        // Convert array to map for easy lookup
+        const statsMap = {};
+        ticketStats.forEach(stat => {
+            statsMap[stat._id] = stat;
+        });
+
         // Transform data to match frontend expectation (MOCK_PRODUCTS structure)
         const transformedData = {};
         products.forEach(p => {
+            const stats = statsMap[p.id] || { total: 0, active: 0, resolved: 0 };
+
             transformedData[p.id] = {
                 id: p.id,
                 name: p.name,
@@ -40,9 +69,14 @@ exports.getProducts = async (req, res) => {
                 icon: p.icon,
                 adminEmail: p.adminEmail,
                 adminPassword: p.adminPassword,
-                // Default stats for now
-                trend: [],
-                stats: { total: 0, active: 0, resolved: 0, satisfaction: 0 },
+                // Real stats fetched from DB
+                trend: [], // Trend could be complex calculation, keep empty for now
+                stats: {
+                    total: stats.total,
+                    active: stats.active,
+                    resolved: stats.resolved,
+                    satisfaction: 98 // Hardcoded for now, or calc average rating
+                },
                 dist: [],
                 activity: []
             };
