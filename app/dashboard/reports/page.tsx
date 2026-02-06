@@ -7,6 +7,7 @@ import { getStoredTickets } from "@/lib/tickets";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from 'xlsx';
+import { motion, AnimatePresence } from "framer-motion";
 import {
     Download,
     FileSpreadsheet,
@@ -22,7 +23,9 @@ import {
     Filter,
     Calendar,
     Users,
-    Zap
+    Zap,
+    ChevronDown,
+    X
 } from "lucide-react";
 import {
     BarChart,
@@ -45,7 +48,7 @@ interface ReportTicketData {
     id: string;
     subject: string;
     product: string;
-    status: 'resolved' | 'pending' | 'in_progress' | 'critical';
+    status: 'resolved' | 'pending' | 'in_progress';
     date: string;
     customer: string;
     description: string;
@@ -57,7 +60,12 @@ interface ReportTicketData {
 export default function ReportsPage() {
     const { user } = useAuth();
     const [productFilter, setProductFilter] = useState<string>("all");
-    const [dateRange, setDateRange] = useState<'7days' | '30days' | 'all'>('30days');
+    const [dateRange, setDateRange] = useState<'7days' | '30days' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'custom' | 'all'>('30days');
+    const [customStart, setCustomStart] = useState<string>('');
+    const [customEnd, setCustomEnd] = useState<string>('');
+    const [tempStart, setTempStart] = useState<string>(''); // Temp state for picker
+    const [tempEnd, setTempEnd] = useState<string>(''); // Temp state for picker
+    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false); // New State
     const [tickets, setTickets] = useState<ReportTicketData[]>([]);
     const [products, setProducts] = useState<any[]>([]); // Dynamic Products
 
@@ -124,7 +132,7 @@ export default function ReportsPage() {
                 const s = t.status?.toLowerCase() || '';
                 if (s === 'new' || s === 'pending') status = 'pending';
                 else if (s === 'in progress' || s === 'in_progress') status = 'in_progress';
-                else if (s === 'overdue') status = 'critical';
+                else if (s === 'overdue') status = 'in_progress'; // Map overdue to in_progress instead
                 else if (s === 'done' || s === 'closed' || s === 'resolved') status = 'resolved';
 
                 // Robust Date Parsing
@@ -200,14 +208,55 @@ export default function ReportsPage() {
         now.setHours(0, 0, 0, 0); // Start of today
 
         if (dateRange !== 'all') {
-            const daysAgo = dateRange === '7days' ? 7 : 30;
-            const cutoffDate = new Date(now);
-            cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+            const startDate = new Date(now);
+            const endDate = new Date(now);
+            endDate.setHours(23, 59, 59, 999); // End of today/selection
+
+            switch (dateRange) {
+                case '7days':
+                    startDate.setDate(now.getDate() - 7);
+                    break;
+                case '30days':
+                    startDate.setDate(now.getDate() - 30);
+                    break;
+                case 'thisWeek':
+                    // Assuming Monday start
+                    const day = now.getDay() || 7; // Get current day number, converting Sun (0) to 7
+                    if (day !== 1) startDate.setHours(-24 * (day - 1)); // Go back to Monday
+                    break;
+                case 'lastWeek':
+                    {
+                        const day = now.getDay() || 7;
+                        startDate.setDate(now.getDate() - day - 6);
+                        endDate.setDate(endDate.getDate() - day);
+                    }
+                    break;
+                case 'thisMonth':
+                    startDate.setDate(1);
+                    break;
+                case 'lastMonth':
+                    startDate.setMonth(startDate.getMonth() - 1);
+                    startDate.setDate(1);
+                    endDate.setDate(0); // Last day of previous month
+                    break;
+                case 'custom':
+                    if (customStart) startDate.setTime(new Date(customStart).getTime());
+                    else startDate.setTime(0); // Far past if no start
+
+                    if (customEnd) {
+                        const end = new Date(customEnd);
+                        end.setHours(23, 59, 59, 999);
+                        endDate.setTime(end.getTime());
+                    }
+                    break;
+            }
+
+            startDate.setHours(0, 0, 0, 0);
 
             data = data.filter(item => {
                 const itemDate = new Date(item.date);
                 itemDate.setHours(0, 0, 0, 0);
-                return itemDate >= cutoffDate;
+                return itemDate >= startDate && itemDate <= endDate;
             });
         }
 
@@ -218,7 +267,6 @@ export default function ReportsPage() {
     const stats = useMemo(() => {
         const total = filteredData.length;
         const resolved = filteredData.filter(t => t.status === 'resolved').length;
-        const critical = filteredData.filter(t => t.status === 'critical').length;
         const inProgress = filteredData.filter(t => t.status === 'in_progress').length;
         const pending = filteredData.filter(t => t.status === 'pending').length;
         const avgResponseTime = filteredData.reduce((acc, t) => acc + t.responseTime, 0) / (total || 1);
@@ -227,7 +275,6 @@ export default function ReportsPage() {
         return {
             total,
             resolved,
-            critical,
             inProgress,
             pending,
             avgResponseTime: avgResponseTime.toFixed(1),
@@ -240,7 +287,6 @@ export default function ReportsPage() {
         { name: 'Resolved', value: stats.resolved, color: '#10b981' },
         { name: 'In Progress', value: stats.inProgress, color: '#f59e0b' },
         { name: 'Pending', value: stats.pending, color: '#6b7280' },
-        { name: 'Critical', value: stats.critical, color: '#ef4444' },
     ];
 
     const productChartData = useMemo(() => {
@@ -272,29 +318,73 @@ export default function ReportsPage() {
     }, [filteredData, products]);
 
     const trendData = useMemo(() => {
-        // Use the same timezone correction logic as the data parser to ensures keys match
         const today = new Date();
         const offset = today.getTimezoneOffset() * 60000;
+        let start = new Date(today);
+        let days = 7;
 
-        const last7Days = Array.from({ length: 7 }, (_, i) => {
-            const d = new Date(today.getTime());
-            d.setDate(d.getDate() - (6 - i));
-            // Create a date object that represents "Local Time" but in UTC fields so conversion to ISO String preserves the local YYYY-MM-DD
+        switch (dateRange) {
+            case '7days':
+                start.setDate(today.getDate() - 6);
+                days = 7;
+                break;
+            case '30days':
+                start.setDate(today.getDate() - 29);
+                days = 30;
+                break;
+            case 'thisWeek':
+                const day = today.getDay() || 7;
+                start.setDate(today.getDate() - day + 1);
+                days = day; // Show up to today
+                break;
+            case 'lastWeek':
+                const d = today.getDay() || 7;
+                start.setDate(today.getDate() - d - 6);
+                days = 7;
+                break;
+            case 'thisMonth':
+                start.setDate(1);
+                days = today.getDate();
+                break;
+            case 'lastMonth':
+                start.setMonth(start.getMonth() - 1);
+                start.setDate(1);
+                const lastDay = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
+                days = lastDay;
+                break;
+            case 'custom':
+                if (customStart && customEnd) {
+                    start = new Date(customStart);
+                    const end = new Date(customEnd);
+                    const diffTime = Math.abs(end.getTime() - start.getTime());
+                    days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                }
+                break;
+            case 'all':
+                // For all time, we might just show last 30 days or handle differently
+                // For simplicity, sticking to last 30
+                start.setDate(today.getDate() - 29);
+                days = 30;
+                break;
+        }
+
+        const dateArray = Array.from({ length: days }, (_, i) => {
+            const d = new Date(start.getTime());
+            d.setDate(d.getDate() + i);
             const localD = new Date(d.getTime() - offset);
             return localD.toISOString().split('T')[0];
         });
 
-        return last7Days.map(dateStr => {
-            // Construct local date explicitly to ensure formatting is consistent
+        return dateArray.map(dateStr => {
             const [year, month, day] = dateStr.split('-').map(Number);
             const dateObj = new Date(year, month - 1, day);
 
             return {
-                date: dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }),
+                date: dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
                 tickets: filteredData.filter(t => t.date === dateStr).length,
             };
         });
-    }, [filteredData]);
+    }, [filteredData, dateRange, customStart, customEnd]);
 
     // Export handlers
     const handleExportExcel = () => {
@@ -324,7 +414,6 @@ export default function ReportsPage() {
             { Metric: 'Resolved', Value: stats.resolved },
             { Metric: 'In Progress', Value: stats.inProgress },
             { Metric: 'Pending', Value: stats.pending },
-            { Metric: 'Critical', Value: stats.critical },
             { Metric: 'Resolution Rate (%)', Value: stats.resolutionRate },
             { Metric: 'Avg Response Time (hrs)', Value: stats.avgResponseTime },
         ];
@@ -363,7 +452,6 @@ export default function ReportsPage() {
         doc.text(`Resolved: ${stats.resolved}`, 20, summaryY + 6);
         doc.text(`In Progress: ${stats.inProgress}`, 20, summaryY + 12);
 
-        doc.text(`Critical: ${stats.critical}`, 80, summaryY);
         doc.text(`Pending: ${stats.pending}`, 80, summaryY + 6);
         doc.text(`Resolution Rate: ${stats.resolutionRate}%`, 80, summaryY + 12);
 
@@ -424,41 +512,145 @@ export default function ReportsPage() {
     if (!user) return null;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pb-12">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
             <Header title="Analytics & Reports" subtitle="Comprehensive ticket analytics and insights" />
 
-            <div className="max-w-[1600px] mx-auto px-4 md:px-8 space-y-8">
+            <div className="max-w-7xl mx-auto px-4 py-6 md:p-6 space-y-6">
 
                 {/* Control Bar */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-white shadow-lg sticky top-24 z-10">
-                    <div className="flex items-center gap-3">
-                        <div className="p-3 bg-gradient-to-br from-[#1500FF] to-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
-                            <BarChart3 className="text-white" size={24} />
+                <div className="flex flex-col lg:flex-row lg:items-start xl:items-center justify-between gap-4 lg:gap-6 bg-white/90 backdrop-blur-md p-4 md:p-6 rounded-3xl border border-white/50 shadow-sm sticky top-20 z-20 transition-all duration-300 hover:shadow-md">
+                    <div className="flex items-center gap-3.5">
+                        <div className="p-2.5 md:p-3.5 bg-gradient-to-br from-[#1500FF] to-indigo-600 rounded-2xl shadow-lg shadow-indigo-500/20 ring-4 ring-indigo-50">
+                            <BarChart3 className="text-white w-5 h-5 md:w-6 md:h-6" />
                         </div>
                         <div>
-                            <h2 className="font-bold text-slate-800">Report Dashboard</h2>
-                            <p className="text-xs text-slate-500">Visual analytics & data export</p>
+                            <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">Report Dashboard</h2>
+                            <p className="text-xs md:text-sm text-slate-500 font-medium">Visual analytics & data export</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4">
                         {/* Date Range Filter */}
-                        <select
-                            value={dateRange}
-                            onChange={(e) => setDateRange(e.target.value as any)}
-                            className="appearance-none bg-white border border-slate-200 text-slate-700 text-sm font-bold py-2.5 px-4 pr-10 rounded-xl hover:border-[#1500FF]/50 focus:outline-none focus:ring-2 focus:ring-[#1500FF]/20 cursor-pointer"
-                        >
-                            <option value="7days">Last 7 Days</option>
-                            <option value="30days">Last 30 Days</option>
-                            <option value="all">All Time</option>
-                        </select>
+                        <div className="relative z-20 w-full sm:w-auto">
+                            <button
+                                onClick={() => {
+                                    if (!isDatePickerOpen) {
+                                        setTempStart(customStart);
+                                        setTempEnd(customEnd);
+                                    }
+                                    setIsDatePickerOpen(!isDatePickerOpen);
+                                }}
+                                className={`flex items-center justify-between gap-3 bg-white border text-sm font-bold py-2.5 md:py-3 px-4 md:px-5 rounded-xl transition-all shadow-sm w-full min-w-[200px] ${isDatePickerOpen ? 'border-[#1500FF] ring-4 ring-[#1500FF]/10 text-[#1500FF]' : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <Calendar size={18} className={isDatePickerOpen ? "text-[#1500FF]" : "text-slate-400"} />
+                                    <span className="truncate">
+                                        {dateRange === 'custom' && customStart && customEnd
+                                            ? `${new Date(customStart).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' })} - ${new Date(customEnd).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' })}`
+                                            : {
+                                                '7days': 'Last 7 Days',
+                                                '30days': 'Last 30 Days',
+                                                'thisWeek': 'This Week',
+                                                'lastWeek': 'Last Week',
+                                                'thisMonth': 'This Month',
+                                                'lastMonth': 'Last Month',
+                                                'custom': 'Custom Range',
+                                                'all': 'All Time'
+                                            }[dateRange] || "Select Date"
+                                        }
+                                    </span>
+                                </div>
+                                <ChevronDown size={16} className={`transition-transform duration-300 ${isDatePickerOpen ? 'rotate-180 text-[#1500FF]' : 'text-slate-400'}`} />
+                            </button>
 
-                        {/* Product Filter - Super Admin Only */}
+                            <AnimatePresence>
+                                {isDatePickerOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-10" onClick={() => setIsDatePickerOpen(false)} />
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="absolute right-0 left-0 sm:left-auto top-full mt-2 bg-white rounded-2xl shadow-2xl shadow-slate-200/50 border border-slate-100 p-4 sm:w-[320px] z-30 flex flex-col gap-2"
+                                        >
+                                            <div className="grid grid-cols-2 gap-2 mb-2">
+                                                {['7days', '30days', 'thisWeek', 'lastWeek', 'thisMonth', 'lastMonth', 'all'].map((key) => {
+                                                    const labels: any = {
+                                                        '7days': 'Last 7 Days', '30days': 'Last 30 Days', 'thisWeek': 'This Week',
+                                                        'lastWeek': 'Last Week', 'thisMonth': 'This Month', 'lastMonth': 'Last Month', 'all': 'All Time'
+                                                    };
+                                                    return (
+                                                        <button
+                                                            key={key}
+                                                            onClick={() => { setDateRange(key as any); setIsDatePickerOpen(false); }}
+                                                            className={`px-3 py-2.5 text-xs font-bold rounded-xl transition-all text-left border ${dateRange === key ? 'bg-[#1500FF] border-[#1500FF] text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-100' : 'bg-white border-transparent text-slate-500 hover:bg-slate-50 hover:border-slate-100'}`}
+                                                        >
+                                                            {labels[key]}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            <div className="border-t border-slate-100 pt-4 mt-1">
+                                                <div className="flex items-center justify-between mb-3 px-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <Filter size={12} className="text-[#1500FF]" />
+                                                        <p className="text-[11px] font-extrabold text-slate-900 uppercase tracking-widest">Custom Range</p>
+                                                    </div>
+                                                    {dateRange === 'custom' && <span className="flex h-2 w-2 rounded-full bg-[#1500FF] ring-4 ring-blue-50" />}
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-[11px] text-slate-500 font-bold ml-1">From</label>
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="date"
+                                                                    value={tempStart}
+                                                                    onChange={e => setTempStart(e.target.value)}
+                                                                    className="w-full bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#1500FF] focus:ring-4 focus:ring-[#1500FF]/5 transition-all text-center placeholder-transparent"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-[11px] text-slate-500 font-bold ml-1">To</label>
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="date"
+                                                                    value={tempEnd}
+                                                                    onChange={e => setTempEnd(e.target.value)}
+                                                                    className="w-full bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#1500FF] focus:ring-4 focus:ring-[#1500FF]/5 transition-all text-center"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            setCustomStart(tempStart);
+                                                            setCustomEnd(tempEnd);
+                                                            setDateRange('custom');
+                                                            setIsDatePickerOpen(false);
+                                                        }}
+                                                        className="w-full bg-[#1500FF] text-white py-3 rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] flex items-center justify-center gap-2"
+                                                    >
+                                                        <CheckCircle2 size={14} />
+                                                        Apply Date Filter
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    </>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
+                        {/* Product Filter */}
                         {user.role === 'SUPER_ADMIN' && (
                             <select
                                 value={productFilter}
                                 onChange={(e) => setProductFilter(e.target.value)}
-                                className="appearance-none bg-white border border-slate-200 text-slate-700 text-sm font-bold py-2.5 px-4 pr-10 rounded-xl hover:border-[#1500FF]/50 focus:outline-none focus:ring-2 focus:ring-[#1500FF]/20 cursor-pointer"
+                                className="appearance-none bg-white border border-slate-200 text-slate-600 text-sm font-bold py-2.5 md:py-3 px-4 md:px-5 pr-10 rounded-xl hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#1500FF]/10 focus:border-[#1500FF] cursor-pointer transition-all shadow-sm w-full sm:w-auto"
                             >
                                 <option value="all">All Products</option>
                                 {products.length > 0 ? (
@@ -476,23 +668,23 @@ export default function ReportsPage() {
                         )}
 
                         {/* Export Buttons */}
-                        <div className="flex bg-white rounded-xl border border-slate-200 p-1 shadow-sm">
+                        <div className="grid grid-cols-2 sm:flex bg-white rounded-xl border border-slate-200 p-1 md:p-1.5 shadow-sm w-full sm:w-auto">
                             <button
                                 onClick={handleExportExcel}
-                                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 transition-all shadow-md hover:shadow-lg"
+                                className="flex items-center justify-center gap-2 px-3 md:px-4 py-2 rounded-lg text-sm font-bold text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 transition-all w-full sm:w-auto"
                                 title="Export to Excel"
                             >
-                                <FileSpreadsheet size={16} />
-                                <span>Excel</span>
+                                <FileSpreadsheet size={18} />
+                                <span className="inline">Excel</span>
                             </button>
-                            <div className="w-2"></div>
+                            <div className="hidden sm:block w-px bg-slate-200 my-1 mx-0.5 md:mx-1"></div>
                             <button
                                 onClick={handleExportPDF}
-                                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 transition-all shadow-md hover:shadow-lg"
+                                className="flex items-center justify-center gap-2 px-3 md:px-4 py-2 rounded-lg text-sm font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition-all w-full sm:w-auto border-l border-slate-100 sm:border-l-0"
                                 title="Export to PDF"
                             >
-                                <FileText size={16} />
-                                <span>PDF</span>
+                                <FileText size={18} />
+                                <span className="inline">PDF</span>
                             </button>
                         </div>
                     </div>
@@ -502,101 +694,138 @@ export default function ReportsPage() {
                 {/* Charts Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Status Distribution - Pie Chart */}
-                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-white shadow-lg">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 bg-purple-100 rounded-lg">
-                                <PieChartIcon className="text-purple-600" size={20} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800">Status Distribution</h3>
-                                <p className="text-xs text-slate-500">Breakdown by ticket status</p>
+                    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                        <div className="flex items-center justify-between mb-8">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2.5 bg-purple-50 rounded-xl">
+                                    <PieChartIcon className="text-purple-600" size={22} />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-lg text-slate-800">Status Distribution</h3>
+                                    <p className="text-xs font-medium text-slate-500">Breakdown by current status</p>
+                                </div>
                             </div>
                         </div>
-                        <ResponsiveContainer width="100%" height={300}>
+                        <ResponsiveContainer width="100%" height={320}>
                             <PieChart>
                                 <Pie
                                     data={statusChartData}
                                     cx="50%"
                                     cy="50%"
-                                    labelLine={false}
-                                    label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                                    outerRadius={100}
-                                    fill="#8884d8"
+                                    innerRadius={80} // Donut style
+                                    outerRadius={110}
+                                    paddingAngle={4}
                                     dataKey="value"
+                                    stroke="none"
                                 >
                                     {statusChartData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                     ))}
                                 </Pie>
-                                <Tooltip />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                        border: 'none',
+                                        borderRadius: '12px',
+                                        boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+                                        padding: '12px',
+                                        fontSize: '12px'
+                                    }}
+                                    itemStyle={{ color: '#1e293b', fontWeight: 'bold' }}
+                                />
+                                <Legend verticalAlign="bottom" height={36} iconType="circle" />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
 
                     {/* Product Performance - Bar Chart */}
-                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-white shadow-lg">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 bg-indigo-100 rounded-lg">
-                                <BarChart3 className="text-indigo-600" size={20} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800">Product Performance</h3>
-                                <p className="text-xs text-slate-500">Tickets by product</p>
+                    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                        <div className="flex items-center justify-between mb-8">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2.5 bg-indigo-50 rounded-xl">
+                                    <BarChart3 className="text-indigo-600" size={22} />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-lg text-slate-800">Product Performance</h3>
+                                    <p className="text-xs font-medium text-slate-500">Ticket volume by product</p>
+                                </div>
                             </div>
                         </div>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={productChartData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                                <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 12 }} />
-                                <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
+                        <ResponsiveContainer width="100%" height={320}>
+                            <BarChart data={productChartData} barSize={32}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} dy={10} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
                                 <Tooltip
+                                    cursor={{ fill: '#f8fafc' }}
                                     contentStyle={{
-                                        backgroundColor: 'white',
-                                        border: '1px solid #e2e8f0',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                        border: 'none',
                                         borderRadius: '12px',
-                                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                                        boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+                                        padding: '12px'
                                     }}
                                 />
-                                <Legend />
-                                <Bar dataKey="tickets" fill="#1500FF" radius={[8, 8, 0, 0]} name="Total Tickets" />
-                                <Bar dataKey="resolved" fill="#10b981" radius={[8, 8, 0, 0]} name="Resolved" />
+                                <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                                <Bar dataKey="tickets" fill="#4f46e5" radius={[6, 6, 6, 6]} name="Total Tickets" />
+                                <Bar dataKey="resolved" fill="#10b981" radius={[6, 6, 6, 6]} name="Resolved" />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
                 {/* Trend Line Chart */}
-                <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-white shadow-lg">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 bg-cyan-100 rounded-lg">
-                            <TrendingUp className="text-cyan-600" size={20} />
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-slate-800">Ticket Trend (Last 7 Days)</h3>
-                            <p className="text-xs text-slate-500">Daily ticket volume</p>
+                {/* Trend Line Chart */}
+                <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-4">
+                            <div className="p-2.5 bg-cyan-50 rounded-xl">
+                                <TrendingUp className="text-cyan-600" size={22} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg text-slate-800">
+                                    {(() => {
+                                        const labels: Record<string, string> = {
+                                            '7days': 'Last 7 Days',
+                                            '30days': 'Last 30 Days',
+                                            'thisWeek': 'This Week',
+                                            'lastWeek': 'Last Week',
+                                            'thisMonth': 'This Month',
+                                            'lastMonth': 'Last Month',
+                                            'custom': 'Custom Range',
+                                            'all': 'All Time'
+                                        };
+                                        return `Ticket Trend (${labels[dateRange] || dateRange})`;
+                                    })()}
+                                </h3>
+                                <p className="text-xs font-medium text-slate-500">Daily ticket volume analysis</p>
+                            </div>
                         </div>
                     </div>
-                    <ResponsiveContainer width="100%" height={300}>
+                    <ResponsiveContainer width="100%" height={320}>
                         <LineChart data={trendData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                            <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 12 }} />
-                            <YAxis tick={{ fill: '#64748b', fontSize: 12 }} allowDecimals={false} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} dy={10} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} allowDecimals={false} />
                             <Tooltip
+                                cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }}
                                 contentStyle={{
-                                    backgroundColor: 'white',
-                                    border: '1px solid #e2e8f0',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                    border: 'none',
                                     borderRadius: '12px',
-                                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                                    boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+                                    padding: '12px',
+                                    fontWeight: 'bold'
                                 }}
                             />
-                            <Legend />
+                            <Legend verticalAlign="bottom" height={36} iconType="circle" />
                             <Line
                                 type="monotone"
                                 dataKey="tickets"
-                                stroke="#1500FF"
-                                strokeWidth={3}
-                                dot={{ fill: '#1500FF', r: 5 }}
-                                activeDot={{ r: 8 }}
+                                stroke="#06b6d4"
+                                strokeWidth={4}
+                                dot={{ fill: '#white', stroke: '#06b6d4', strokeWidth: 3, r: 6 }}
+                                activeDot={{ r: 8, fill: '#06b6d4', stroke: '#fff', strokeWidth: 3 }}
                                 name="Tickets Created"
                             />
                         </LineChart>
@@ -604,71 +833,78 @@ export default function ReportsPage() {
                 </div>
 
                 {/* Summary Table */}
-                <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white shadow-lg overflow-hidden">
-                    <div className="bg-gradient-to-r from-slate-50 to-slate-100 p-8 border-b border-slate-200">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-slate-200 rounded-lg">
-                                <Users className="text-slate-700" size={20} />
+                <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden mb-12">
+                    <div className="bg-white px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="p-2.5 bg-slate-50 rounded-xl">
+                                <Users className="text-slate-600" size={22} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-800">Recent Tickets Summary</h3>
-                                <p className="text-xs text-slate-500">Top 10 recent entries</p>
+                                <h3 className="font-bold text-lg text-slate-800">Recent Tickets Summary</h3>
+                                <p className="text-xs font-medium text-slate-500">Top 10 recent entries</p>
                             </div>
                         </div>
+                        <button className="text-sm font-bold text-[#1500FF] hover:underline">
+                            View All
+                        </button>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
-                                <tr className="bg-slate-50 border-b border-slate-200">
-                                    <th className="p-4 text-left text-xs font-extrabold text-slate-600 uppercase tracking-wider">ID</th>
-                                    <th className="p-4 text-left text-xs font-extrabold text-slate-600 uppercase tracking-wider">Product</th>
-                                    <th className="p-4 text-left text-xs font-extrabold text-slate-600 uppercase tracking-wider">Subject</th>
-                                    <th className="p-4 text-left text-xs font-extrabold text-slate-600 uppercase tracking-wider">Status</th>
-                                    <th className="p-4 text-left text-xs font-extrabold text-slate-600 uppercase tracking-wider">Priority</th>
-                                    <th className="p-4 text-left text-xs font-extrabold text-slate-600 uppercase tracking-wider">Response</th>
-                                    <th className="p-4 text-left text-xs font-extrabold text-slate-600 uppercase tracking-wider">Date</th>
+                                <tr className="bg-slate-50/50 border-b border-slate-100">
+                                    <th className="px-8 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">ID</th>
+                                    <th className="px-8 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Product</th>
+                                    <th className="px-8 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Subject</th>
+                                    <th className="px-8 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                    <th className="px-8 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Priority</th>
+                                    <th className="px-8 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Response</th>
+                                    <th className="px-8 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {filteredData.slice(0, 10).map((ticket) => (
-                                    <tr key={ticket.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="p-4">
-                                            <span className="font-bold text-slate-700 text-sm">{ticket.id}</span>
+                            <tbody className="divide-y divide-slate-50">
+                                {filteredData.slice(0, 10).map((ticket, i) => (
+                                    <tr key={ticket.id} className="hover:bg-slate-50/80 transition-colors group">
+                                        <td className="px-8 py-5 text-sm font-bold text-slate-700 group-hover:text-[#1500FF] transition-colors">
+                                            #{ticket.id.toString().slice(-4)}
                                         </td>
-                                        <td className="p-4">
-                                            <span className="inline-block px-2 py-1 rounded-lg text-xs font-bold uppercase bg-slate-100 text-slate-600">
+                                        <td className="px-8 py-5">
+                                            <span className="px-3 py-1 bg-slate-100 rounded-full text-xs font-bold text-slate-600">
                                                 {ticket.product}
                                             </span>
                                         </td>
-                                        <td className="p-4">
-                                            <div className="font-semibold text-slate-800 text-sm">{ticket.subject}</div>
-                                            <div className="text-xs text-slate-500 mt-0.5">{ticket.customer}</div>
+                                        <td className="px-8 py-5">
+                                            <div className="text-sm font-medium text-slate-700 max-w-[200px] truncate">{ticket.subject}</div>
+                                            <div className="text-xs text-slate-500 mt-1">{ticket.customer}</div>
                                         </td>
-                                        <td className="p-4">
-                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${ticket.status === 'resolved' ? 'bg-emerald-100 text-emerald-700' :
-                                                ticket.status === 'critical' ? 'bg-rose-100 text-rose-700' :
-                                                    ticket.status === 'in_progress' ? 'bg-amber-100 text-amber-700' :
-                                                        'bg-slate-100 text-slate-700'
+                                        <td className="px-8 py-5">
+                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold capitalize border ${ticket.status === 'resolved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                ticket.status === 'in_progress' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
+                                                    'bg-slate-50 text-slate-600 border-slate-200'
                                                 }`}>
-                                                {ticket.status === 'resolved' && <CheckCircle2 size={12} />}
-                                                {ticket.status === 'critical' && <AlertCircle size={12} />}
-                                                {ticket.status === 'in_progress' && <Clock size={12} />}
-                                                {ticket.status.replace('_', ' ').toUpperCase()}
+                                                {ticket.status === 'resolved' ? <CheckCircle2 size={12} /> :
+                                                    ticket.status === 'in_progress' ? <Activity size={12} /> :
+                                                        <Clock size={12} />}
+                                                {ticket.status.replace('_', ' ')}
                                             </span>
                                         </td>
-                                        <td className="p-4">
-                                            <span className={`inline-block px-2 py-1 rounded-lg text-xs font-bold ${ticket.priority === 'high' ? 'bg-red-100 text-red-700' :
-                                                ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                                    'bg-blue-100 text-blue-700'
-                                                }`}>
-                                                {ticket.priority.toUpperCase()}
-                                            </span>
+                                        <td className="px-8 py-5">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-2 h-2 rounded-full ${ticket.priority === 'high' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]' :
+                                                    ticket.priority === 'medium' ? 'bg-amber-400' :
+                                                        'bg-emerald-400'
+                                                    }`} />
+                                                <span className="text-sm font-bold text-slate-600 capitalize">{ticket.priority}</span>
+                                            </div>
                                         </td>
-                                        <td className="p-4">
-                                            <span className="text-sm font-semibold text-slate-600">{ticket.responseTime}h</span>
+                                        <td className="px-8 py-5">
+                                            <span className="text-sm font-bold text-slate-600">{ticket.responseTime}h</span>
                                         </td>
-                                        <td className="p-4">
-                                            <span className="text-sm text-slate-600">{ticket.date}</span>
+                                        <td className="px-8 py-5 text-sm font-medium text-slate-500">
+                                            {new Date(ticket.date).toLocaleDateString('id-ID', {
+                                                day: 'numeric',
+                                                month: 'short',
+                                                year: 'numeric'
+                                            })}
                                         </td>
                                     </tr>
                                 ))}

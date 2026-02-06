@@ -98,6 +98,7 @@ export default function ProductsPage() {
         fetchProducts();
 
         // Load tickets for dynamic stats
+
         const loadTickets = async () => {
             const t = await getStoredTickets();
             setTickets(t);
@@ -342,7 +343,23 @@ export default function ProductsPage() {
 
                                     <div className="grid grid-cols-2 gap-3 mb-8">
                                         {(() => {
-                                            const pTickets = tickets.filter(t => t.product === product.name);
+                                            const pTickets = tickets.filter(t => {
+                                                if (!t.product) return false;
+                                                const tProd = t.product.toLowerCase().trim();
+                                                const pName = product.name.toLowerCase().trim();
+                                                const pId = product.id.toLowerCase().trim();
+
+                                                // Check for exact name match
+                                                if (tProd === pName) return true;
+
+                                                // Check for exact ID match
+                                                if (tProd === pId) return true;
+
+                                                // Check for partial ID match (e.g. "003-catatmak" should match "catatmak")
+                                                if (tProd.includes(pId) || pId.includes(tProd)) return true;
+
+                                                return false;
+                                            });
                                             const pTotal = pTickets.length;
                                             const pActive = pTickets.filter(t => ['New', 'In Progress', 'Pending', 'Overdue'].includes(t.status)).length;
                                             return (
@@ -362,7 +379,7 @@ export default function ProductsPage() {
                                 </div>
 
                                 <motion.button
-                                    onClick={() => router.push(`/dashboard?product=${product.id}`)}
+                                    onClick={() => router.push(`/dashboard/tickets?product=${product.id}`)}
                                     whileHover="hover"
                                     initial="rest"
                                     animate="rest"

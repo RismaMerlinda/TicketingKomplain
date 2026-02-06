@@ -23,7 +23,6 @@ import {
     ChevronDown,
     LayoutGrid,
     AlignJustify,
-    // ... imports
     Table as TableIcon,
     MoreHorizontal,
     Info,
@@ -35,7 +34,7 @@ import {
     HelpCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { ROLES } from "@/lib/auth";
 import { MOCK_PRODUCTS } from "@/lib/data";
@@ -335,11 +334,33 @@ const ViewToggle = ({ mode, current, onClick }: { mode: ViewMode, current: ViewM
     );
 }
 
+const DateTimeField = ({ label, value, type, onChange, onAdjust }: { label: string, value: string, type: string, onChange: (v: string) => void, onAdjust: (dir: number) => void }) => (
+    <div className="space-y-1 flex-1 relative group">
+        <label className="text-[10px] font-bold uppercase text-slate-500">{label}</label>
+        <div className="relative">
+            <input
+                type={type}
+                className="w-full p-3 pr-10 rounded-xl border-2 border-blue-50 focus:ring-4 focus:ring-[#1500FF]/10 focus:border-[#1500FF] outline-none font-semibold text-slate-800 bg-white transition-all shadow-sm text-sm"
+                value={value}
+                onChange={e => onChange(e.target.value)}
+            />
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-0.5">
+                <button type="button" onClick={() => onAdjust(1)} className="p-0.5 hover:bg-slate-100 rounded text-slate-900 transition-colors"><ChevronUp size={14} /></button>
+                <button type="button" onClick={() => onAdjust(-1)} className="p-0.5 hover:bg-slate-100 rounded text-slate-900 transition-colors"><ChevronDown size={14} /></button>
+            </div>
+        </div>
+    </div>
+);
+
 export default function TicketsPage() {
-    // const router = useRouter();
+    // const router = useRouter(); // Use the one from imports if needed, or re-enable
+    const searchParams = useSearchParams();
+    const initialProductFilter = searchParams.get('product');
+
     const [tickets, setTickets] = useState<TicketData[]>([]);
     const [products, setProducts] = useState<Record<string, any>>(MOCK_PRODUCTS);
     const [activeTab, setActiveTab] = useState<TicketStatus | "All">("All");
+    const [productFilter, setProductFilter] = useState<string | null>(initialProductFilter);
     const [direction, setDirection] = useState(0);
     const tabOrder: (TicketStatus | "All")[] = ["All", "New", "In Progress", "Pending", "Overdue", "Done", "Closed"];
 
@@ -398,8 +419,7 @@ export default function TicketsPage() {
         description: "",
         customer: ""
     });
-    // Deadline State
-    // Deadline / Schedule State - Reset to empty as requested
+    // Deadline / Schedule State
     const [startDate, setStartDate] = useState("");
     const [startTime, setStartTime] = useState("");
     const [endDate, setEndDate] = useState("");
@@ -410,7 +430,15 @@ export default function TicketsPage() {
     const roleFilteredTickets = tickets.filter(ticket => {
         if (user?.role === ROLES.PRODUCT_ADMIN && user?.productId) {
             const productInfo = products[user.productId as keyof typeof products];
-            if (ticket.product !== productInfo?.name) return false;
+            if (productInfo) {
+                const tProd = ticket.product.toLowerCase().trim();
+                const pName = productInfo.name.toLowerCase().trim();
+                const pId = productInfo.id.toLowerCase().trim();
+
+                // Robust match: name, ID, or partial ID match
+                const isMatch = tProd === pName || tProd === pId || tProd.includes(pId) || pId.includes(tProd);
+                if (!isMatch) return false;
+            }
         }
         return true;
     });
@@ -421,8 +449,33 @@ export default function TicketsPage() {
             ticket.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
             ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             ticket.customer.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesTab && matchesSearch;
+
+        const matchesProduct = !productFilter || (() => {
+            const tProd = ticket.product.toLowerCase().trim();
+            const filter = productFilter.toLowerCase().trim();
+
+            // Try to resolve the filter to a known product
+            const matchedProduct = Object.values(products).find(p =>
+                p.id.toLowerCase() === filter || p.name.toLowerCase() === filter
+            );
+
+            if (matchedProduct) {
+                const pId = matchedProduct.id.toLowerCase();
+                const pName = matchedProduct.name.toLowerCase();
+                // Check against both ID and Name of the resolved product, including partial matches
+                return tProd === pName || tProd === pId || tProd.includes(pId) || pId.includes(tProd);
+            }
+
+            // Fallback: direct string fuzzy match
+            return tProd === filter || tProd.includes(filter) || filter.includes(tProd);
+        })();
+
+        return matchesTab && matchesSearch && matchesProduct;
     });
+
+    const clearProductFilter = () => {
+        setProductFilter(null);
+    };
 
     const handleAddTicket = async () => {
         // Validation: All fields mandatory
@@ -446,18 +499,20 @@ export default function TicketsPage() {
             return;
         }
 
-        const now = new Date();
-        const deadline = new Date(`${endDate}T${endTime}`);
-        const initialStatus = deadline < now ? "Overdue" : "New";
-
-        const ticket = {
-            title: newTicket.title,
-            description: newTicket.description,
+        const ticket: TicketData = {
+            title: newTicket.title!,
+            description: newTicket.description!,
             product: effectiveProduct as any,
             source: (newTicket.source as TicketSource) || "WhatsApp",
             priority: (newTicket.priority as TicketPriority) || "Medium",
-            status: initialStatus,
-            customer: newTicket.customer,
+            customer: newTicket.customer!,
+            status: "New",
+            code: "", // Generated by backend/lib
+            id: "", // Generated by backend/lib
+            createdAt: new Date().toISOString(),
+            prioritySetAt: new Date().toISOString(),
+            responseDue: "2h",
+            resolveDue: "24h",
             startDate,
             startTime,
             endDate,
@@ -467,7 +522,6 @@ export default function TicketsPage() {
         const success = await addTicket(ticket);
 
         if (success) {
-            // Log Activity
             logActivity(
                 `Created new ticket ${newTicket.title}`,
                 user?.name || "System",
@@ -494,17 +548,8 @@ export default function TicketsPage() {
             const success = await updateTicket(updated);
 
             if (success) {
-                // Find productId from products object based on product name
                 const prodId = Object.keys(products).find(key => products[key].name === ticket.product) || null;
-
-                // Log Activity
-                logActivity(
-                    `Ticket ${ticket.code} status changed to ${newStatus}`,
-                    user?.name || "System",
-                    prodId
-                );
-
-                // Update local state
+                logActivity(`Ticket ${ticket.code} status changed to ${newStatus}`, user?.name || "System", prodId);
                 const latest = await getStoredTickets();
                 setTickets(latest);
                 if (selectedTicket?.id === id) setSelectedTicket(updated);
@@ -518,23 +563,16 @@ export default function TicketsPage() {
 
         if (success) {
             setSelectedTicket(null);
-            // Log Activity
             if (ticketToDelete) {
                 const prodId = Object.keys(products).find(key => products[key].name === ticketToDelete.product) || null;
-                logActivity(
-                    `Deleted ticket ${ticketToDelete.code}: ${ticketToDelete.title}`,
-                    user?.name || "System",
-                    prodId
-                );
+                logActivity(`Deleted ticket ${ticketToDelete.code}: ${ticketToDelete.title}`, user?.name || "System", prodId);
             }
-            // Update local state
             const latest = await getStoredTickets();
             setTickets(latest);
         }
         setDeleteModal({ isOpen: false, ticketId: null });
     };
 
-    // --- Date/Time Adjusters ---
     const adjustDate = (current: string, days: number, setter: (v: string) => void) => {
         const d = current ? new Date(current) : new Date();
         d.setDate(d.getDate() + days);
@@ -548,115 +586,6 @@ export default function TicketsPage() {
         setter(`${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`);
     };
 
-    const DateTimeField = ({ label, value, type, onChange, onAdjust }: { label: string, value: string, type: string, onChange: (v: string) => void, onAdjust: (dir: number) => void }) => {
-        const dateInputRef = React.useRef<HTMLInputElement>(null);
-
-        const toDisplay = (val: string) => {
-            if (type !== 'date' || !val || !val.includes('-')) return val;
-            const parts = val.split('-');
-            if (parts[0].length === 3 || parts[0].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-            return val;
-        };
-
-        const [localInputValue, setLocalInputValue] = useState(toDisplay(value));
-
-        useEffect(() => {
-            setLocalInputValue(toDisplay(value));
-        }, [value]);
-
-        const handleType = (text: string) => {
-            const isDeleting = localInputValue.length > text.length;
-
-            if (type === 'date') {
-                const digits = text.replace(/\D/g, '').slice(0, 8);
-                let formatted = "";
-                if (digits.length > 0) {
-                    formatted += digits.substring(0, 2);
-                    if (digits.length > 2) {
-                        formatted += "-" + digits.substring(2, 4);
-                        if (digits.length > 4) {
-                            formatted += "-" + digits.substring(4, 8);
-                        }
-                    }
-                }
-
-                if (isDeleting && localInputValue.endsWith("-") && text.length === localInputValue.length - 1) {
-                    setLocalInputValue(text);
-                    return;
-                }
-
-                setLocalInputValue(formatted);
-                if (formatted.length === 10) {
-                    const parts = formatted.split('-');
-                    onChange(`${parts[2]}-${parts[1]}-${parts[0]}`);
-                }
-            } else if (type === 'time') {
-                const digits = text.replace(/\D/g, '').slice(0, 4);
-                let formatted = "";
-                if (digits.length > 0) {
-                    formatted += digits.substring(0, 2);
-                    if (digits.length > 2) {
-                        formatted += ":" + digits.substring(2, 4);
-                    }
-                }
-
-                if (isDeleting && localInputValue.endsWith(":") && text.length === localInputValue.length - 1) {
-                    setLocalInputValue(text);
-                    return;
-                }
-
-                setLocalInputValue(formatted);
-                if (formatted.length === 5) {
-                    onChange(formatted);
-                }
-            } else {
-                setLocalInputValue(text);
-                onChange(text);
-            }
-        };
-
-        return (
-            <div className="space-y-1 flex-1 relative group">
-                <label className="text-[10px] font-bold uppercase text-slate-500">{label}</label>
-                <div className="relative">
-                    <input
-                        type="text"
-                        placeholder={type === 'date' ? "DD-MM-YYYY" : "HH:MM"}
-                        className="w-full p-3 pr-20 rounded-xl border-2 border-blue-50 focus:ring-4 focus:ring-[#1500FF]/10 focus:border-[#1500FF] outline-none font-semibold text-slate-800 bg-white transition-all shadow-sm text-sm"
-                        value={localInputValue}
-                        onChange={e => handleType(e.target.value)}
-                    />
-
-                    <input
-                        type={type}
-                        ref={dateInputRef}
-                        className="absolute inset-0 opacity-0 pointer-events-none w-0 h-0"
-                        value={value}
-                        onChange={(e) => {
-                            const val = e.target.value;
-                            onChange(val);
-                            setLocalInputValue(toDisplay(val));
-                        }}
-                    />
-
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                        <button
-                            type="button"
-                            onClick={() => (dateInputRef.current as any)?.showPicker?.()}
-                            className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors"
-                        >
-                            {type === 'date' ? <Calendar size={16} /> : <Clock size={16} />}
-                        </button>
-
-                        <div className="flex flex-col gap-0.5 border-l border-slate-100 pl-1">
-                            <button type="button" onClick={() => onAdjust(1)} className="p-0.5 hover:bg-slate-100 rounded text-slate-900 transition-colors"><ChevronUp size={14} /></button>
-                            <button type="button" onClick={() => onAdjust(-1)} className="p-0.5 hover:bg-slate-100 rounded text-slate-900 transition-colors"><ChevronDown size={14} /></button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    };
 
     return (
         <div className="min-h-screen pb-12 bg-[#F8FAFC]">
@@ -668,6 +597,31 @@ export default function TicketsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="max-w-[1600px] mx-auto px-4 md:px-8 pt-6 space-y-1"
             >
+                {/* Active Product Filter Banner */}
+                {productFilter && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center justify-between"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                <Filter size={16} />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold uppercase text-blue-400">Active Filter</p>
+                                <p className="text-sm font-bold text-blue-800">Showing tickets for <span className="underline decoration-blue-300 decoration-2 underline-offset-2">{Object.values(products).find(p => p.id === productFilter)?.name || productFilter}</span></p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={clearProductFilter}
+                            className="bg-white px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition-all shadow-sm"
+                        >
+                            Clear Filter
+                        </button>
+                    </motion.div>
+                )}
+
                 {/* 1. Controls Row */}
                 <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-6">
                     <div className="relative w-full md:max-w-md group">

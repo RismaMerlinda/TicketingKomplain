@@ -18,6 +18,10 @@ export interface TicketData {
     resolveDue: string;
     createdAt: string;
     customer: string;
+    startDate?: string;
+    startTime?: string;
+    endDate?: string;
+    endTime?: string;
 }
 
 const STORAGE_KEY = 'ticketing_tickets';
