@@ -301,7 +301,7 @@ const FilterTab = ({ label, count, isActive, onClick }: { label: string, count?:
             px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 border
             flex items-center gap-2 whitespace-nowrap active:scale-95
             ${isActive
-                ? "bg-[#1500FF] border-[#1500FF] text-white scale-105 shadow-lg shadow-blue-200 relative z-10"
+                ? "bg-[#1500FF] border-[#1500FF] text-white scale-105 relative z-10"
                 : "bg-white border-slate-200 text-slate-500 hover:border-[#1500FF]/30 hover:text-[#1500FF] hover:bg-slate-50 hover:shadow-sm"
             }
         `}
@@ -650,8 +650,8 @@ export default function TicketsPage() {
                     </div>
                 </div>
 
-                {/* 2. Filters Row - Balanced gap & room for corners */}
-                <div className="flex items-center gap-2 overflow-x-auto pt-2 pb-3 scrollbar-hide px-4 md:px-0">
+                {/* 2. Filters Row - Shifted right for better precision */}
+                <div className="flex items-center gap-3 overflow-x-auto pt-2 pb-3 scrollbar-hide pl-8 md:pl-0">
                     <FilterTab label="All Tickets" isActive={activeTab === "All"} onClick={() => handleTabChange("All")} count={roleFilteredTickets.length} />
                     {(["New", "In Progress", "Pending", "Overdue", "Done", "Closed"] as TicketStatus[]).map(s => (
                         <FilterTab key={s} label={s} isActive={activeTab === s} onClick={() => handleTabChange(s)} count={roleFilteredTickets.filter(t => t.status === s).length} />
@@ -659,7 +659,7 @@ export default function TicketsPage() {
                 </div>
 
                 {/* 3. Ticket Content - Balanced gap */}
-                <div className="relative min-h-[400px] pt-5 pb-8">
+                <div className="relative min-h-[200px] pt-4 pb-8">
                     <AnimatePresence initial={false} mode="wait" custom={direction}>
                         <motion.div
                             key={activeTab + viewMode}
@@ -687,33 +687,37 @@ export default function TicketsPage() {
                                     ))}
                                 </div>
                             )}
+
+                            {/* TABLE VIEW */}
+                            {viewMode === "TABLE" && (
+                                <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden mb-6">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead className="bg-slate-100/80 border-b border-slate-200">
+                                                <tr>
+                                                    <th className="p-4 py-5 text-xs font-extrabold uppercase text-slate-700 tracking-wider">ID</th>
+                                                    <th className="p-4 py-5 text-xs font-extrabold uppercase text-slate-700 tracking-wider">Subject</th>
+                                                    <th className="p-4 py-5 text-xs font-extrabold uppercase text-slate-700 tracking-wider">Status</th>
+                                                    <th className="p-4 py-5 text-xs font-extrabold uppercase text-slate-700 tracking-wider">Product</th>
+                                                    <th className="p-4 py-5 text-xs font-extrabold uppercase text-slate-700 tracking-wider">Customer</th>
+                                                    <th className="p-4 py-5 text-xs font-extrabold uppercase text-slate-700 tracking-wider">Due</th>
+                                                    <th className="p-4 py-5 text-xs font-extrabold uppercase text-slate-700 tracking-wider text-right">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {filteredTickets.map(ticket => (
+                                                    <TicketTableRow key={ticket.id} ticket={ticket} onClick={() => setSelectedTicket(ticket)} />
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
                         </motion.div>
                     </AnimatePresence>
                 </div>
 
-                {/* TABLE VIEW */}
-                {viewMode === "TABLE" && (
-                    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-slate-50 border-b border-slate-100">
-                                <tr>
-                                    <th className="p-4 text-xs font-bold uppercase text-slate-500">ID</th>
-                                    <th className="p-4 text-xs font-bold uppercase text-slate-500">Subject</th>
-                                    <th className="p-4 text-xs font-bold uppercase text-slate-500">Status</th>
-                                    <th className="p-4 text-xs font-bold uppercase text-slate-500">Product</th>
-                                    <th className="p-4 text-xs font-bold uppercase text-slate-500">Customer</th>
-                                    <th className="p-4 text-xs font-bold uppercase text-slate-500">Due</th>
-                                    <th className="p-4 text-xs font-bold uppercase text-slate-500 text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredTickets.map(ticket => (
-                                    <TicketTableRow key={ticket.id} ticket={ticket} onClick={() => setSelectedTicket(ticket)} />
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+
 
                 {/* Empty State */}
                 {filteredTickets.length === 0 && (
