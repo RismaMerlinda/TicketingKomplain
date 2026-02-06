@@ -148,7 +148,7 @@ export default function ProfilePage() {
                                         </div>
                                         <input
                                             type="email"
-                                            value={user?.email || ""}
+                                            value={user?.email || ''}
                                             readOnly
                                             className="w-full pl-14 pr-6 py-4 bg-slate-100 border border-slate-200 rounded-2xl cursor-not-allowed text-slate-500 font-bold outline-none"
                                         />
@@ -164,7 +164,7 @@ export default function ProfilePage() {
                                         </div>
                                         <input
                                             type="text"
-                                            value={user?.role.replace('_', ' ') || ""}
+                                            value={user?.role?.replace('_', ' ') || ''}
                                             readOnly
                                             className="w-full pl-14 pr-6 py-4 bg-slate-100 border border-slate-200 rounded-2xl cursor-not-allowed text-slate-500 font-bold outline-none"
                                         />
