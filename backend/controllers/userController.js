@@ -39,7 +39,9 @@ exports.createUser = async (req, res) => {
 
         const savedUser = await newUser.save();
 
-        // REVERSE SYNC: Update Product if this user is assigned to a product
+        // REVERSE SYNC LOGIC:
+        // Jika user ini adalah ADMIN PRODUK, maka update juga data di collection 'product'
+        // agar data admin (email/password) di kedua tempat tetap SINKRON.
         if (savedUser.productId && savedUser.role === 'PRODUCT_ADMIN') {
             await Product.findOneAndUpdate(
                 { id: savedUser.productId },
