@@ -171,15 +171,22 @@ export const getStoredTickets = async (): Promise<TicketData[]> => {
         if (!response.ok) throw new Error('Failed to fetch tickets');
         const data = await response.json();
 
-        // Map backend format to frontend format and auto-detect Overdue
+        // If empty, try to seed automatically if needed (consider frontend behavior here)
+        if (!data || data.length === 0) {
+            console.log("Database empty.");
+            return [];
+        }
+
         const now = new Date();
+        // Map backend format to frontend format
         return data.map((t: any) => {
+            // Normalize Status
             let status: TicketStatus = ((): TicketStatus => {
                 const s = String(t.status || 'New').toLowerCase().replace('_', ' ');
                 if (s === 'new') return 'New';
                 if (s === 'pending') return 'Pending';
                 if (s === 'in progress') return 'In Progress';
-                if (s === 'overdue') return 'Overdue';
+                if (s === 'overdue' || s === 'critical') return 'Overdue';
                 if (s === 'done' || s === 'resolved') return 'Done';
                 if (s === 'closed') return 'Closed';
                 return 'New';
@@ -187,11 +194,18 @@ export const getStoredTickets = async (): Promise<TicketData[]> => {
 
             // Auto-Overdue Check: If not Done/Closed and past deadline
             if (status !== "Done" && status !== "Closed" && t.endDate && t.endTime) {
-                const deadline = new Date(`${t.endDate}T${t.endTime}`);
-                if (deadline < now) {
+                const deadlineStr = `${t.endDate.split('/').reverse().join('-')}T${t.endTime}`;
+                const deadline = new Date(deadlineStr);
+                if (!isNaN(deadline.getTime()) && deadline < now) {
                     status = "Overdue";
                 }
             }
+
+            // Normalize Priority
+            let priority = t.priority || "Medium";
+            if (priority.toLowerCase() === 'high' || priority.toLowerCase() === 'critical') priority = "High";
+            if (priority.toLowerCase() === 'medium') priority = "Medium";
+            if (priority.toLowerCase() === 'low') priority = "Low";
 
             return {
                 id: t._id,
@@ -199,13 +213,13 @@ export const getStoredTickets = async (): Promise<TicketData[]> => {
                 status,
                 title: t.title,
                 description: t.description,
-                product: t.product,
+                product: t.productName || t.product || "Catatmak",
                 source: t.source || t.platform || "WhatsApp",
-                priority: t.priority as any,
-                prioritySetAt: t.prioritySetAt,
+                priority: priority as any,
+                prioritySetAt: t.prioritySetAt || (t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "Today"),
                 responseDue: t.responseDue || (t.startDate ? `${t.startDate} · ${t.startTime}` : "ASAP"),
                 resolveDue: t.resolveDue || (t.endDate ? `${t.endDate} · ${t.endTime}` : "TBD"),
-                createdAt: t.createdAt,
+                createdAt: t.createdAt ? new Date(t.createdAt).toLocaleString() : "Recently",
                 customer: t.customerName || t.customer || "Customer",
                 startDate: t.startDate,
                 startTime: t.startTime,
