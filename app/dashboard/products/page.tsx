@@ -98,8 +98,8 @@ export default function ProductsPage() {
         fetchProducts();
 
         // Load tickets for dynamic stats
-        const loadTickets = () => {
-            const t = getStoredTickets();
+        const loadTickets = async () => {
+            const t = await getStoredTickets();
             setTickets(t);
         };
         loadTickets();

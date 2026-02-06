@@ -97,7 +97,7 @@ export default function ReportsPage() {
 
             // 2. Migration Check: If API empty but LocalStorage has data -> Sync!
             if (rawTickets.length === 0) {
-                const stored = getStoredTickets();
+                const stored = await getStoredTickets();
                 if (stored && stored.length > 0) {
                     console.log("📦 Migrating tickets to MongoDB...");
                     try {

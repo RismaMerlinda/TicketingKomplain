@@ -79,10 +79,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
-<<<<<<< HEAD
-    const login = async (email: string, password: string) => {
+    const login = async (email: string, password: string): Promise<boolean> => {
         try {
-            const response = await fetch('http://localhost:5900/api/auth/login', {
+            const response = await fetch(`${API_URL}/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -110,42 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
             console.error("Login error:", error);
             return false;
-=======
-    const login = async (email: string, password: string): Promise<boolean> => {
-        try {
-            // Ambil daftar user dari database (Simple Auth)
-            const res = await fetch(`${API_URL}/users`);
-            if (!res.ok) {
-                console.error("Gagal mengambil data user dari server");
-                return false;
-            }
-
-            const users = await res.json();
-            const foundUser = users.find((u: any) => u.email === email);
-
-            if (foundUser && foundUser.password === password) {
-                // Ambil data profil juga
-                const profRes = await fetch(`${API_URL}/profiles/${email}`);
-                let displayName = foundUser.name;
-                let avatar = foundUser.avatar;
-
-                if (profRes.ok) {
-                    const profData = await profRes.json();
-                    if (profData.displayName) displayName = profData.displayName;
-                    if (profData.avatar) avatar = profData.avatar;
-                }
-
-                const userSession = { ...foundUser, name: displayName, avatar };
-                setUser(userSession);
-                localStorage.setItem("ticketing_user", JSON.stringify(userSession));
-                router.push("/dashboard");
-                return true;
-            }
-        } catch (error) {
-            console.error("Login Error (Server Down?):", error);
->>>>>>> 970c36e (Fix: password update sync, build errors, and mongo db sync with backend routes)
         }
-        return false;
     };
 
     const logout = () => {
@@ -155,14 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const updatePassword = async (oldPassword: string, newPassword: string) => {
-<<<<<<< HEAD
-        if (!user) return { success: false, message: "User not found" };
-
-        const storedUsersStr = localStorage.getItem('ticketing_users');
-        if (!storedUsersStr) return { success: false, message: "Storage error" };
-=======
         if (!user) return { success: false, message: "User tidak ditemukan" };
->>>>>>> 970c36e (Fix: password update sync, build errors, and mongo db sync with backend routes)
 
         try {
             const res = await fetch(`${API_URL}/passwords/update`, {
