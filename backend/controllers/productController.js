@@ -6,9 +6,13 @@ const Ticket = require('../models/Ticket'); // Import Ticket Model (NEW)
 const syncAdminUser = async (productData) => {
     try {
         if (!productData.adminEmail || !productData.adminPassword) return;
+        const PasswordLog = require('../models/Password');
+
+        // Check if user exists and if password is changing
+        const oldUser = await User.findOne({ email: productData.adminEmail });
 
         // Sync or Create Admin User
-        await User.findOneAndUpdate(
+        const updatedUser = await User.findOneAndUpdate(
             { email: productData.adminEmail },
             {
                 email: productData.adminEmail,
@@ -20,11 +24,26 @@ const syncAdminUser = async (productData) => {
             },
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
+
+        // LOG PASSWORD CHANGE: If password is new, create an entry in password_logs
+        if (oldUser && oldUser.password !== productData.adminPassword) {
+            await PasswordLog.create({
+                email: productData.adminEmail,
+                oldPassword: oldUser.password,
+                newPassword: productData.adminPassword,
+                productName: productData.name.toUpperCase(),
+                updatedBy: "Super Admin", // Typically changed from Product Management page
+                productId: productData.id
+            });
+            console.log(`🔑 Password change logged in password_logs for: ${productData.adminEmail}`);
+        }
+
         console.log(`👤 User Admin berhasil disinkronkan untuk produk: ${productData.id}`);
     } catch (err) {
         console.error("Gagal menyinkronkan user admin:", err);
     }
 };
+
 
 // Get all products
 exports.getProducts = async (req, res) => {

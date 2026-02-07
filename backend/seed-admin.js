@@ -15,25 +15,25 @@ const realAdmins = [
         productId: null
     },
     {
-        email: "orbitbilliard@gmail.com",
-        password: "password123",
+        email: "orbitbilliard.id@gmail.com",
+        password: "orbit123",
         name: "Admin Orbit Billiard",
         role: "PRODUCT_ADMIN",
-        productId: "orbit"
+        productId: "orbit-billiard"
     },
     {
-        email: "catatmak@gmail.com",
-        password: "password123",
+        email: "hi@catatmak.com",
+        password: "catatmak123",
         name: "Admin Catatmark",
         role: "PRODUCT_ADMIN",
         productId: "catatmak"
     },
     {
         email: "jokiinformatika@gmail.com",
-        password: "password123",
+        password: "joki123",
         name: "Admin Joki Informatika",
         role: "PRODUCT_ADMIN",
-        productId: "joki"
+        productId: "joki-informatika"
     }
 ];
 

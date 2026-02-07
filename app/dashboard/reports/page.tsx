@@ -74,10 +74,11 @@ export default function ReportsPage() {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const res = await fetch('http://localhost:5900/api/products');
-                if (res.ok) {
+                const res = await fetch('http://127.0.0.1:5900/api/products');
+                const contentType = res.headers.get("content-type");
+                if (res.ok && contentType && contentType.includes("application/json")) {
                     const data = await res.json();
-                    setProducts(Object.values(data)); // Convert object map to array
+                    setProducts(Object.values(data));
                 }
             } catch (e) {
                 console.error("Failed to load products", e);
@@ -93,11 +94,12 @@ export default function ReportsPage() {
 
             try {
                 // 1. Try Fetch from API
-                const res = await fetch('http://localhost:5900/api/tickets');
-                if (res.ok) {
+                const res = await fetch('http://127.0.0.1:5900/api/tickets');
+                const contentType = res.headers.get("content-type");
+                if (res.ok && contentType && contentType.includes("application/json")) {
                     rawTickets = await res.json();
                 } else {
-                    console.error("Failed to fetch tickets from API");
+                    console.error("Failed to fetch tickets from API or invalid format");
                 }
             } catch (e) {
                 console.error("API Error", e);
@@ -109,7 +111,7 @@ export default function ReportsPage() {
                 if (stored && stored.length > 0) {
                     console.log("📦 Migrating tickets to MongoDB...");
                     try {
-                        const syncRes = await fetch('http://localhost:5900/api/tickets/sync', {
+                        const syncRes = await fetch('http://127.0.0.1:5900/api/tickets/sync', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(stored)

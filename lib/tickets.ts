@@ -168,7 +168,15 @@ const API_URL = 'http://127.0.0.1:5900/api/tickets';
 export const getStoredTickets = async (): Promise<TicketData[]> => {
     try {
         const response = await fetch(API_URL);
-        if (!response.ok) throw new Error('Failed to fetch tickets');
+        if (!response.ok) throw new Error(`Failed to fetch tickets: ${response.status}`);
+
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            const text = await response.text();
+            console.error("Expected JSON but got:", text.substring(0, 50));
+            throw new Error("Invalid response format from server");
+        }
+
         const data = await response.json();
 
         // If empty, try to seed automatically if needed (consider frontend behavior here)

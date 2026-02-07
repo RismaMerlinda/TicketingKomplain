@@ -45,8 +45,9 @@ export default function ProductsPage() {
         // Fetch products from backend API
         const fetchProducts = async () => {
             try {
-                const res = await fetch('http://localhost:5900/api/products');
-                if (res.ok) {
+                const res = await fetch('http://127.0.0.1:5900/api/products');
+                const contentType = res.headers.get("content-type");
+                if (res.ok && contentType && contentType.includes("application/json")) {
                     const data = await res.json();
                     const productCount = Object.keys(data).length;
 
@@ -60,7 +61,7 @@ export default function ProductsPage() {
                             // Migrate each product to MongoDB
                             for (const [id, product] of Object.entries(localProducts)) {
                                 try {
-                                    await fetch('http://localhost:5900/api/products', {
+                                    await fetch('http://127.0.0.1:5900/api/products', {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify(product)
@@ -169,8 +170,8 @@ export default function ProductsPage() {
         try {
             const method = isEditModalOpen ? 'PUT' : 'POST';
             const url = isEditModalOpen
-                ? `http://localhost:5900/api/products/${newProductId}`
-                : 'http://localhost:5900/api/products';
+                ? `http://127.0.0.1:5900/api/products/${newProductId}`
+                : 'http://127.0.0.1:5900/api/products';
 
             const res = await fetch(url, {
                 method,
@@ -227,7 +228,7 @@ export default function ProductsPage() {
         const productName = products[id]?.name || id;
 
         try {
-            const res = await fetch(`http://localhost:5900/api/products/${id}`, {
+            const res = await fetch(`http://127.0.0.1:5900/api/products/${id}`, {
                 method: 'DELETE'
             });
 
