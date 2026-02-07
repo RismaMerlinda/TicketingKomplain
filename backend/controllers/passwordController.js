@@ -7,8 +7,10 @@ exports.updateAndLogPassword = async (req, res) => {
     try {
         const { email, oldPassword, newPassword } = req.body;
 
+        const emailStr = email.trim(); // Case sensitive email in DB? usually lower
+
         // 1. Cari user berdasarkan email
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email: emailStr });
         if (!user) {
             return res.status(404).json({ message: "User tidak ditemukan" });
         }
@@ -32,14 +34,24 @@ exports.updateAndLogPassword = async (req, res) => {
         user.password = newPassword;
         await user.save();
 
+        console.log(`✅ User password updated for: ${user.email}`);
+
         // 5. REVERSE SYNC: Update juga di tabel products jika dia adalah PRODUCT_ADMIN
         if (user.role === 'PRODUCT_ADMIN' && user.productId) {
             const Product = require('../models/Product');
-            await Product.findOneAndUpdate(
-                { id: user.productId },
-                { adminPassword: newPassword }
+
+            // Gunakan regex untuk pencarian ID produk yang case-insensitive agar lebih robust
+            const updatedProduct = await Product.findOneAndUpdate(
+                { id: { $regex: new RegExp(`^${user.productId}$`, 'i') } },
+                { adminPassword: newPassword },
+                { new: true }
             );
-            console.log(`📦 Product table synced for: ${user.productId}`);
+
+            if (updatedProduct) {
+                console.log(`📦 Product table synced for: ${user.productId}`);
+            } else {
+                console.error(`⚠️ Failed to sync Product table. Product ID '${user.productId}' not found.`);
+            }
         }
 
         console.log(`🔑 Password updated and logged for: ${email}`);

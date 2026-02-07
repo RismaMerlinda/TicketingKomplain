@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Search, Settings, Menu, User, LogOut, ShieldCheck, HelpCircle } from "lucide-react";
+import { Bell, Search, Settings, Menu, User, LogOut, ShieldCheck, HelpCircle, CheckCircle } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,6 +23,7 @@ export default function Header({ title = "Overview", subtitle = "Operations Cont
     const [passwordError, setPasswordError] = useState("");
     const [unreadCount, setUnreadCount] = useState(0);
     const [isLogoutOpen, setIsLogoutOpen] = useState(false);
+    const [successModal, setSuccessModal] = useState({ isOpen: false, title: "", message: "" });
 
     const notifRef = useRef<HTMLDivElement>(null);
     const settingsRef = useRef<HTMLDivElement>(null);
@@ -77,7 +78,11 @@ export default function Header({ title = "Overview", subtitle = "Operations Cont
         const result = await updatePassword(oldPassword, newPassword);
         if (result.success) {
             if (user) logActivity("Updated account password", user.name, user.productId);
-            alert("Success! Password updated.");
+            setSuccessModal({
+                isOpen: true,
+                title: "Password Updated",
+                message: "Your account password has been successfully changed."
+            });
             setIsPasswordModalOpen(false);
             setOldPassword("");
             setNewPassword("");
@@ -345,6 +350,41 @@ export default function Header({ title = "Overview", subtitle = "Operations Cont
                 cancelText="Cancel"
                 variant="danger"
             />
+
+            {/* Success Modal */}
+            <AnimatePresence>
+                {successModal.isOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setSuccessModal({ ...successModal, isOpen: false })}
+                            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="bg-white rounded-3xl shadow-2xl w-full max-w-sm relative overflow-hidden p-8 text-center"
+                        >
+                            <div className="w-16 h-16 bg-green-50 text-green-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                <CheckCircle size={32} />
+                            </div>
+                            <h3 className="text-xl font-black text-slate-800 mb-2">{successModal.title}</h3>
+                            <p className="text-slate-500 text-sm font-medium leading-relaxed mb-6">
+                                {successModal.message}
+                            </p>
+                            <button
+                                onClick={() => setSuccessModal({ ...successModal, isOpen: false })}
+                                className="w-full py-3.5 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-all shadow-lg active:scale-[0.98]"
+                            >
+                                Continue
+                            </button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </header>
     );
 }

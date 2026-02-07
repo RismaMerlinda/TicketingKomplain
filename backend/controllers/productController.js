@@ -3,42 +3,50 @@ const User = require('../models/User'); // Import User Model
 const Ticket = require('../models/Ticket'); // Import Ticket Model (NEW)
 
 // Using Helper to sync admin user (No change here)
+// Using Helper to sync admin user (Improved)
 const syncAdminUser = async (productData) => {
     try {
         if (!productData.adminEmail || !productData.adminPassword) return;
         const PasswordLog = require('../models/Password');
 
-        // Check if user exists and if password is changing
-        const oldUser = await User.findOne({ email: productData.adminEmail });
+        const adminEmail = productData.adminEmail.trim();
+
+        // Check if user exists (case-sensitive usually, but let's be safe)
+        const oldUser = await User.findOne({ email: adminEmail });
 
         // Sync or Create Admin User
         const updatedUser = await User.findOneAndUpdate(
-            { email: productData.adminEmail },
+            { email: adminEmail },
             {
-                email: productData.adminEmail,
-                password: productData.adminPassword, // In real app, hash this!
+                email: adminEmail,
+                password: productData.adminPassword,
                 name: `Admin ${productData.name}`,
                 role: 'PRODUCT_ADMIN',
                 productId: productData.id,
+                // Only set avatar if not exists or basic updated
                 avatar: `https://ui-avatars.com/api/?name=${productData.name}&background=random`
             },
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
 
+        if (updatedUser) {
+            console.log(`👤 User Admin synced/created: ${updatedUser.email} (Product: ${productData.id})`);
+        } else {
+            console.error(`⚠️ Failed to sync user for ${adminEmail}`);
+        }
+
         // LOG PASSWORD CHANGE: If password is new, create an entry in password_logs
         if (oldUser && oldUser.password !== productData.adminPassword) {
             await PasswordLog.create({
-                email: productData.adminEmail,
-                oldPassword: oldUser.password,
-                newPassword: productData.adminPassword,
+                email: adminEmail,
+                oldPassword: oldUser.password, // Old pass
+                newPassword: productData.adminPassword, // New pass
                 productName: productData.name.toUpperCase(),
                 updatedBy: "Super Admin", // Typically changed from Product Management page
                 productId: productData.id
             });
-            console.log(`🔑 Password change logged in password_logs for: ${productData.adminEmail}`);
+            console.log(`🔑 Password change logged for: ${adminEmail}`);
         }
-
-        console.log(`👤 User Admin berhasil disinkronkan untuk produk: ${productData.id}`);
     } catch (err) {
         console.error("Gagal menyinkronkan user admin:", err);
     }
