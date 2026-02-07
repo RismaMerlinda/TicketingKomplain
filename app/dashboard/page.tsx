@@ -297,10 +297,18 @@ function DashboardContent() {
     // Filter tickets for current view
     const currentViewTickets = realTickets.filter(t => {
         if (!effectiveProductId) return true; // Show all if no specific product selected
-        const pName = products[effectiveProductId]?.name;
-        // Match by Product Name (Ticket uses name like "Phincon", Product uses ID as key but has name property)
-        return t.product === pName;
+
+        const pObj = products[effectiveProductId];
+        const pName = pObj?.name;
+
+        // Match by Product ID or Product Name (Database stored ID, some legacy might store Name)
+        const ticketProduct = String(t.product || "").toLowerCase();
+        const targetId = String(effectiveProductId).toLowerCase();
+        const targetName = pName ? pName.toLowerCase() : "";
+
+        return ticketProduct === targetId || ticketProduct === targetName;
     });
+
 
     // 1. Filter tickets by Date Range
     const { start: filterStart, end: filterEnd } = getDateRange();
@@ -604,8 +612,16 @@ function DashboardContent() {
                                 <>
                                     {Object.values(products).map((prod: any) => {
                                         // Dynamic stats for each product in the grid
-                                        const pTotal = realTickets.filter(t => t.product === prod.name).length;
-                                        const pActive = realTickets.filter(t => t.product === prod.name && ['New', 'In Progress', 'Pending', 'Overdue'].includes(t.status)).length;
+                                        const pTotal = realTickets.filter(t => {
+                                            const tProd = String(t.product || "").toLowerCase();
+                                            return tProd === prod.id.toLowerCase() || tProd === prod.name.toLowerCase();
+                                        }).length;
+                                        const pActive = realTickets.filter(t => {
+                                            const tProd = String(t.product || "").toLowerCase();
+                                            const isMatch = tProd === prod.id.toLowerCase() || tProd === prod.name.toLowerCase();
+                                            return isMatch && ['New', 'In Progress', 'Pending', 'Overdue'].includes(t.status);
+                                        }).length;
+
                                         return (
                                             <ProductStatCard
                                                 key={prod.id}

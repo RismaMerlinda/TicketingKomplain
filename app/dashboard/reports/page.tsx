@@ -199,10 +199,25 @@ export default function ReportsPage() {
 
         // Role/Product Filter
         if (user.role === 'PRODUCT_ADMIN' && user.productId) {
-            data = data.filter(item => item.product.toLowerCase().includes(user.productId?.toLowerCase() || ''));
+            const targetId = user.productId.toLowerCase();
+            const pObj = products.find(p => p.id === user.productId);
+            const targetName = pObj?.name?.toLowerCase() || "";
+
+            data = data.filter(item => {
+                const itemProduct = item.product.toLowerCase();
+                return itemProduct === targetId || itemProduct === targetName;
+            });
         } else if (user.role === 'SUPER_ADMIN' && productFilter !== 'all') {
-            data = data.filter(item => item.product.toLowerCase().includes(productFilter.toLowerCase()));
+            const targetId = productFilter.toLowerCase();
+            const pObj = products.find(p => p.id === productFilter);
+            const targetName = pObj?.name?.toLowerCase() || "";
+
+            data = data.filter(item => {
+                const itemProduct = item.product.toLowerCase();
+                return itemProduct === targetId || itemProduct === targetName;
+            });
         }
+
 
         // Date Range Filter
         // We use the start of the current day to ensure we include today's tickets correctly
@@ -306,17 +321,22 @@ export default function ReportsPage() {
         }
 
         return productList.map(p => {
-            // Use loose matching to catch variations
-            const productTickets = filteredData.filter(t =>
-                t.product.toLowerCase().includes(p.key.toLowerCase()) ||
-                t.product.toLowerCase().includes(p.label.toLowerCase())
-            );
+            // Use strict matching for accuracy
+            const targetId = p.key.toLowerCase();
+            const targetName = p.label.toLowerCase();
+
+            const productTickets = filteredData.filter(t => {
+                const itemProduct = t.product.toLowerCase();
+                return itemProduct === targetId || itemProduct === targetName;
+            });
+
             return {
                 name: p.label,
                 tickets: productTickets.length,
                 resolved: productTickets.filter(t => t.status === 'resolved').length,
             };
         });
+
     }, [filteredData, products]);
 
     const trendData = useMemo(() => {
