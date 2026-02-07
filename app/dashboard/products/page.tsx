@@ -289,7 +289,7 @@ export default function ProductsPage() {
                             whileHover={{ scale: 1.05, boxShadow: "0 20px 25px -5px rgb(21 0 255 / 0.3)" }}
                             whileTap={{ scale: 0.95 }}
                             onClick={handleAddClick}
-                            className="flex items-center gap-2 bg-gradient-to-r from-[#1500FF] to-[#2EA9FF] text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20"
+                            className="flex items-center gap-2 bg-[#1500FF] hover:bg-[#1500FF]/90 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20"
                         >
                             <Plus size={20} strokeWidth={3} />
                             Add New Product
