@@ -221,7 +221,7 @@ export const getStoredTickets = async (): Promise<TicketData[]> => {
                 status,
                 title: t.title,
                 description: t.description,
-                product: t.productName || t.product || "Catatmak",
+                product: t.product || t.productName || "",
                 source: t.source || t.platform || "WhatsApp",
                 priority: priority as any,
                 prioritySetAt: t.prioritySetAt || (t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "Today"),
