@@ -17,14 +17,14 @@ const DEFAULT_USERS = [
         password: "joki123",
         name: "Admin Joki",
         role: ROLES.PRODUCT_ADMIN,
-        productId: "joki-informatika"
+        productId: "joki"
     },
     {
         email: "orbitbilliard.id@gmail.com",
         password: "orbit123",
         name: "Admin Orbit",
         role: ROLES.PRODUCT_ADMIN,
-        productId: "orbit-billiard"
+        productId: "orbit"
     },
     {
         email: "hi@catatmak.com",
@@ -33,6 +33,7 @@ const DEFAULT_USERS = [
         role: ROLES.PRODUCT_ADMIN,
         productId: "catatmak"
     }
+
 ];
 
 export const getStoredUsers = () => {

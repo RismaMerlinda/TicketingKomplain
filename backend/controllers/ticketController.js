@@ -120,7 +120,7 @@ exports.seedTickets = async (req, res) => {
             console.log("Database Product kosong. Seeding default products...");
             const defaultProducts = [
                 {
-                    id: "joki-informatika",
+                    id: "joki",
                     name: "Joki Informatika",
                     description: "Layanan bimbingan akademik & project IT",
                     icon: "https://ui-avatars.com/api/?name=Joki+Informatika&background=random",
@@ -128,7 +128,7 @@ exports.seedTickets = async (req, res) => {
                     adminPassword: "password123"
                 },
                 {
-                    id: "orbit-billiard",
+                    id: "orbit",
                     name: "Orbit Billiard",
                     description: "Platform sistem manajemen billiard (POS)",
                     icon: "https://ui-avatars.com/api/?name=Orbit+Billiard&background=random",
@@ -144,6 +144,7 @@ exports.seedTickets = async (req, res) => {
                     adminPassword: "password123"
                 }
             ];
+
             await Product.insertMany(defaultProducts);
             products = await Product.find(); // Refresh list after insert
             console.log("✅ Default products created.");

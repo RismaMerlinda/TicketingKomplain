@@ -19,7 +19,7 @@ const realAdmins = [
         password: "orbit123",
         name: "Admin Orbit Billiard",
         role: "PRODUCT_ADMIN",
-        productId: "orbit-billiard"
+        productId: "orbit"
     },
     {
         email: "hi@catatmak.com",
@@ -33,8 +33,9 @@ const realAdmins = [
         password: "joki123",
         name: "Admin Joki Informatika",
         role: "PRODUCT_ADMIN",
-        productId: "joki-informatika"
+        productId: "joki"
     }
+
 ];
 
 async function runSeed() {

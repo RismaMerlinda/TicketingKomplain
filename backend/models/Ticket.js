@@ -4,7 +4,7 @@ const TicketSchema = new mongoose.Schema({
     code: { type: String, required: true, unique: true }, // e.g. TICKET-001
     title: { type: String, required: true },
     description: { type: String, required: true },
-    product: { type: String, required: true }, // 'orbit-billiard', 'catatmak', 'joki-informatika'
+    product: { type: String, required: true }, // 'orbit', 'catatmak', 'joki'
     priority: { type: String, enum: ['low', 'medium', 'high', 'critical', 'Low', 'Medium', 'High', 'Critical'], default: 'medium' },
     status: { type: String, enum: ['new', 'pending', 'in_progress', 'resolved', 'closed', 'cancelled', 'critical', 'New', 'Pending', 'In Progress', 'Done', 'Overdue'], default: 'new' },
     customerName: { type: String, required: true },

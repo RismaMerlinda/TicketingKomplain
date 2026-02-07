@@ -17,7 +17,7 @@ const users = [
         password: 'joki123',
         name: 'Joki Informatika Admin',
         role: 'PRODUCT_ADMIN',
-        productId: 'joki-informatika',
+        productId: 'joki',
         avatar: 'https://ui-avatars.com/api/?name=Joki+Informatika&background=8b5cf6&color=fff'
     },
     {
@@ -25,7 +25,7 @@ const users = [
         password: 'orbit123',
         name: 'Orbit Billiard Admin',
         role: 'PRODUCT_ADMIN',
-        productId: 'orbit-billiard',
+        productId: 'orbit',
         avatar: 'https://ui-avatars.com/api/?name=Orbit+Billiard&background=ec4899&color=fff'
     },
     {
@@ -36,6 +36,7 @@ const users = [
         productId: 'catatmak',
         avatar: 'https://ui-avatars.com/api/?name=Catatmak&background=f59e0b&color=fff'
     }
+
 ];
 
 async function seedUsers() {
