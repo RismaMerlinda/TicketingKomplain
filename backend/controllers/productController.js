@@ -23,8 +23,7 @@ const syncAdminUser = async (productData) => {
                 name: `Admin ${productData.name}`,
                 role: 'PRODUCT_ADMIN',
                 productId: productData.id,
-                // Only set avatar if not exists or basic updated
-                avatar: `https://ui-avatars.com/api/?name=${productData.name}&background=random`
+                avatar: productData.icon || `https://ui-avatars.com/api/?name=${productData.name}&background=random`
             },
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );

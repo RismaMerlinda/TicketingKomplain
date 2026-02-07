@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/app/context/AuthContext";
 import Header from "@/app/components/Header";
 import { getStoredTickets } from "@/lib/tickets";
@@ -25,7 +26,8 @@ import {
     Users,
     Zap,
     ChevronDown,
-    X
+    X,
+    Search
 } from "lucide-react";
 import {
     BarChart,
@@ -48,24 +50,29 @@ interface ReportTicketData {
     id: string;
     subject: string;
     product: string;
-    status: 'resolved' | 'pending' | 'in_progress';
+    status: 'new' | 'in_progress' | 'pending' | 'overdue' | 'done' | 'closed';
     date: string;
     customer: string;
     description: string;
     priority: 'low' | 'medium' | 'high';
     responseTime: number; // in hours
+    assignedTo: string;
 }
 
 
 export default function ReportsPage() {
     const { user } = useAuth();
     const [productFilter, setProductFilter] = useState<string>("all");
-    const [dateRange, setDateRange] = useState<'7days' | '30days' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'custom' | 'all'>('30days');
+    const [dateRange, setDateRange] = useState<'7days' | '30days' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'custom' | 'all'>('all');
+    const [mounted, setMounted] = useState(false);
+    const [modalSearch, setModalSearch] = useState(""); // Search state for modal
+    useEffect(() => setMounted(true), []);
     const [customStart, setCustomStart] = useState<string>('');
     const [customEnd, setCustomEnd] = useState<string>('');
     const [tempStart, setTempStart] = useState<string>(''); // Temp state for picker
     const [tempEnd, setTempEnd] = useState<string>(''); // Temp state for picker
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false); // New State
+    const [isAllTicketsModalOpen, setIsAllTicketsModalOpen] = useState(false); // Modal State
     const [tickets, setTickets] = useState<ReportTicketData[]>([]);
     const [products, setProducts] = useState<any[]>([]); // Dynamic Products
 
@@ -91,6 +98,25 @@ export default function ReportsPage() {
     useEffect(() => {
         const loadToReports = async () => {
             let rawTickets = [];
+            let usersMap: Record<string, string> = {};
+
+            // 0. Fetch Users for Admin Name Mapping
+            try {
+                const userRes = await fetch('http://127.0.0.1:5900/api/users', { cache: 'no-store' });
+                if (userRes.ok) {
+                    const users = await userRes.json();
+                    if (Array.isArray(users)) {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        users.forEach((u: any) => {
+                            if (u.email) usersMap[u.email] = u.name;
+                            if (u._id) usersMap[u._id] = u.name;
+                            if (u.id) usersMap[u.id] = u.name;
+                        });
+                    }
+                }
+            } catch (e) {
+                console.warn("Could not fetch users for admin mapping", e);
+            }
 
             try {
                 // 1. Try Fetch from API
@@ -130,12 +156,14 @@ export default function ReportsPage() {
 
             // 3. Map Data for Reports
             const mapped = rawTickets.map((t: any) => {
-                let status: ReportTicketData['status'] = 'pending';
-                const s = t.status?.toLowerCase() || '';
-                if (s === 'new' || s === 'pending') status = 'pending';
-                else if (s === 'in progress' || s === 'in_progress') status = 'in_progress';
-                else if (s === 'overdue') status = 'in_progress'; // Map overdue to in_progress instead
-                else if (s === 'done' || s === 'closed' || s === 'resolved') status = 'resolved';
+                let status: ReportTicketData['status'] = 'new';
+                const s = t.status?.toLowerCase().replace(/\s+/g, '_') || '';
+
+                if (['new', 'in_progress', 'pending', 'overdue', 'done', 'closed'].includes(s)) {
+                    status = s as any;
+                } else if (s === 'resolved') {
+                    status = 'done';
+                }
 
                 // Robust Date Parsing
                 let dateStr = new Date().toISOString().split('T')[0]; // Default to today
@@ -181,7 +209,8 @@ export default function ReportsPage() {
                     customer: t.customerName || t.customer || 'Guest',
                     description: t.description || '',
                     priority: (t.priority?.toLowerCase() || 'medium') as any,
-                    responseTime: Math.floor(Math.random() * 48) + 1 // Mock response time for now if not tracked
+                    responseTime: Math.floor(Math.random() * 48) + 1, // Mock response time for now if not tracked
+                    assignedTo: usersMap[t.assignedTo] || t.assignedTo || 'Unassigned'
                 };
             });
             setTickets(mapped);
@@ -283,28 +312,56 @@ export default function ReportsPage() {
     // Calculate statistics
     const stats = useMemo(() => {
         const total = filteredData.length;
-        const resolved = filteredData.filter(t => t.status === 'resolved').length;
+        const newTickets = filteredData.filter(t => t.status === 'new').length;
         const inProgress = filteredData.filter(t => t.status === 'in_progress').length;
         const pending = filteredData.filter(t => t.status === 'pending').length;
-        const avgResponseTime = filteredData.reduce((acc, t) => acc + t.responseTime, 0) / (total || 1);
-        const resolutionRate = total > 0 ? (resolved / total * 100) : 0;
+        const overdue = filteredData.filter(t => t.status === 'overdue').length;
+        const done = filteredData.filter(t => t.status === 'done').length;
+        const closed = filteredData.filter(t => t.status === 'closed').length;
+
+        // Effective resolution: done + closed
+        const resolvedCount = done + closed;
+        const resolutionRate = total > 0 ? (resolvedCount / total * 100) : 0;
+
+        const avgResponseTime = filteredData.reduce((acc, t) => acc + (t.responseTime || 0), 0) / (total || 1);
 
         return {
             total,
-            resolved,
+            new: newTickets,
             inProgress,
             pending,
+            overdue,
+            done,
+            closed,
+            resolvedCount,
             avgResponseTime: avgResponseTime.toFixed(1),
             resolutionRate: resolutionRate.toFixed(1)
         };
     }, [filteredData]);
 
+    // Filter logic for Modal Search
+    const filteredModalTickets = useMemo(() => {
+        if (!modalSearch) return filteredData;
+        const q = modalSearch.toLowerCase();
+        return filteredData.filter(t =>
+            t.subject.toLowerCase().includes(q) ||
+            t.customer.toLowerCase().includes(q) ||
+            t.product.toLowerCase().includes(q) ||
+            t.status.toLowerCase().replace('_', ' ').includes(q) ||
+            t.id.toString().toLowerCase().includes(q) ||
+            (t.assignedTo && t.assignedTo.toLowerCase().includes(q))
+        );
+    }, [filteredData, modalSearch]);
+
     // Data for charts
     const statusChartData = [
-        { name: 'Resolved', value: stats.resolved, color: '#10b981' },
-        { name: 'In Progress', value: stats.inProgress, color: '#f59e0b' },
-        { name: 'Pending', value: stats.pending, color: '#6b7280' },
-    ];
+        { name: 'New', value: stats.new, color: '#3B82F6' },
+        { name: 'In Progress', value: stats.inProgress, color: '#F59E0B' },
+        { name: 'Pending', value: stats.pending, color: '#64748B' },
+        { name: 'Overdue', value: stats.overdue, color: '#EF4444' },
+        { name: 'Done', value: stats.done, color: '#10B981' },
+        { name: 'Closed', value: stats.closed, color: '#1F2937' },
+    ].filter(item => item.value > 0);
 
     const productChartData = useMemo(() => {
         let productList = [];
@@ -332,8 +389,13 @@ export default function ReportsPage() {
 
             return {
                 name: p.label,
-                tickets: productTickets.length,
-                resolved: productTickets.filter(t => t.status === 'resolved').length,
+                total: productTickets.length,
+                new: productTickets.filter(t => t.status === 'new').length,
+                inProgress: productTickets.filter(t => t.status === 'in_progress').length,
+                pending: productTickets.filter(t => t.status === 'pending').length,
+                overdue: productTickets.filter(t => t.status === 'overdue').length,
+                done: productTickets.filter(t => t.status === 'done').length,
+                closed: productTickets.filter(t => t.status === 'closed').length,
             };
         });
 
@@ -433,9 +495,12 @@ export default function ReportsPage() {
         // Add summary sheet
         const summaryData = [
             { Metric: 'Total Tickets', Value: stats.total },
-            { Metric: 'Resolved', Value: stats.resolved },
+            { Metric: 'New', Value: stats.new },
             { Metric: 'In Progress', Value: stats.inProgress },
             { Metric: 'Pending', Value: stats.pending },
+            { Metric: 'Overdue', Value: stats.overdue },
+            { Metric: 'Done', Value: stats.done },
+            { Metric: 'Closed', Value: stats.closed },
             { Metric: 'Resolution Rate (%)', Value: stats.resolutionRate },
             { Metric: 'Avg Response Time (hrs)', Value: stats.avgResponseTime },
         ];
@@ -471,13 +536,17 @@ export default function ReportsPage() {
         doc.setFontSize(9);
         const summaryY = 70;
         doc.text(`Total Tickets: ${stats.total}`, 20, summaryY);
-        doc.text(`Resolved: ${stats.resolved}`, 20, summaryY + 6);
+        doc.text(`New: ${stats.new}`, 20, summaryY + 6);
         doc.text(`In Progress: ${stats.inProgress}`, 20, summaryY + 12);
 
-        doc.text(`Pending: ${stats.pending}`, 80, summaryY + 6);
-        doc.text(`Resolution Rate: ${stats.resolutionRate}%`, 80, summaryY + 12);
+        doc.text(`Pending: ${stats.pending}`, 70, summaryY + 6);
+        doc.text(`Overdue: ${stats.overdue}`, 70, summaryY + 12);
 
-        doc.text(`Avg Response Time: ${stats.avgResponseTime} hours`, 140, summaryY);
+        doc.text(`Done: ${stats.done}`, 120, summaryY + 6);
+        doc.text(`Closed: ${stats.closed}`, 120, summaryY + 12);
+
+        doc.text(`Avg Resp: ${stats.avgResponseTime}h`, 170, summaryY + 6);
+        doc.text(`Rate: ${stats.resolutionRate}%`, 170, summaryY + 12);
 
         // Tickets Table
         doc.setTextColor(0, 0, 0);
@@ -789,8 +858,12 @@ export default function ReportsPage() {
                                     }}
                                 />
                                 <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                                <Bar dataKey="tickets" fill="#4f46e5" radius={[6, 6, 6, 6]} name="Total Tickets" />
-                                <Bar dataKey="resolved" fill="#10b981" radius={[6, 6, 6, 6]} name="Resolved" />
+                                <Bar dataKey="new" stackId="a" fill="#3B82F6" name="New" radius={[0, 0, 4, 4]} />
+                                <Bar dataKey="inProgress" stackId="a" fill="#F59E0B" name="In Progress" />
+                                <Bar dataKey="pending" stackId="a" fill="#64748B" name="Pending" />
+                                <Bar dataKey="overdue" stackId="a" fill="#EF4444" name="Overdue" />
+                                <Bar dataKey="done" stackId="a" fill="#10B981" name="Done" />
+                                <Bar dataKey="closed" stackId="a" fill="#1F2937" name="Closed" radius={[4, 4, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -866,7 +939,10 @@ export default function ReportsPage() {
                                 <p className="text-xs font-medium text-slate-500">Top 10 recent entries</p>
                             </div>
                         </div>
-                        <button className="text-sm font-bold text-[#1500FF] hover:underline">
+                        <button
+                            onClick={() => setIsAllTicketsModalOpen(true)}
+                            className="text-sm font-bold text-[#1500FF] hover:underline"
+                        >
                             View All
                         </button>
                     </div>
@@ -899,13 +975,17 @@ export default function ReportsPage() {
                                             <div className="text-xs text-slate-500 mt-1">{ticket.customer}</div>
                                         </td>
                                         <td className="px-8 py-5">
-                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold capitalize border ${ticket.status === 'resolved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                ticket.status === 'in_progress' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
-                                                    'bg-slate-50 text-slate-600 border-slate-200'
+                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold capitalize border ${ticket.status === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                ticket.status === 'closed' ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                                                    ticket.status === 'overdue' ? 'bg-red-50 text-red-600 border-red-100' :
+                                                        ticket.status === 'in_progress' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                                            ticket.status === 'new' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                'bg-slate-50 text-slate-500 border-slate-200' // Pending
                                                 }`}>
-                                                {ticket.status === 'resolved' ? <CheckCircle2 size={12} /> :
-                                                    ticket.status === 'in_progress' ? <Activity size={12} /> :
-                                                        <Clock size={12} />}
+                                                {ticket.status === 'done' || ticket.status === 'closed' ? <CheckCircle2 size={12} /> :
+                                                    ticket.status === 'overdue' ? <AlertCircle size={12} /> :
+                                                        ticket.status === 'in_progress' ? <Activity size={12} /> :
+                                                            <Clock size={12} />}
                                                 {ticket.status.replace('_', ' ')}
                                             </span>
                                         </td>
@@ -934,6 +1014,136 @@ export default function ReportsPage() {
                         </table>
                     </div>
                 </div>
+
+
+                {/* View All Modal */}
+                {mounted && createPortal(
+                    <AnimatePresence>
+                        {isAllTicketsModalOpen && (
+                            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    onClick={() => setIsAllTicketsModalOpen(false)}
+                                    className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm"
+                                />
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                    className="relative bg-white w-full max-w-6xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+                                >
+                                    <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50 gap-4">
+                                        <div className="min-w-fit">
+                                            <h2 className="text-xl font-bold text-slate-800">All Recent Tickets</h2>
+                                            <p className="text-sm text-slate-500 font-medium mt-1">Showing {filteredModalTickets.length} tickets</p>
+                                        </div>
+
+                                        <div className="relative flex-1 max-w-md mx-4">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                            <input
+                                                type="text"
+                                                autoFocus
+                                                placeholder="Search tickets..."
+                                                value={modalSearch}
+                                                onChange={(e) => setModalSearch(e.target.value)}
+                                                className="w-full pl-10 pr-4 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-sm"
+                                            />
+                                        </div>
+
+                                        <button
+                                            onClick={() => setIsAllTicketsModalOpen(false)}
+                                            className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                                        >
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+
+                                    <div className="flex-1 overflow-auto">
+                                        <table className="w-full">
+                                            <thead className="sticky top-0 bg-white z-10 shadow-sm">
+                                                <tr className="bg-slate-50/50 border-b border-slate-100">
+                                                    <th className="px-8 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">ID</th>
+                                                    <th className="px-8 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Product</th>
+                                                    <th className="px-8 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Subject</th>
+                                                    <th className="px-8 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                                    <th className="px-8 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Priority</th>
+                                                    <th className="px-8 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Response</th>
+                                                    <th className="px-8 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {filteredModalTickets.length > 0 ? (
+                                                    filteredModalTickets.map((ticket, i) => (
+                                                        <tr key={ticket.id} className="hover:bg-slate-50/80 transition-colors group">
+                                                            <td className="px-8 py-5 text-sm font-bold text-slate-700 group-hover:text-[#1500FF] transition-colors">
+                                                                #{ticket.id.toString().slice(-4)}
+                                                            </td>
+                                                            <td className="px-8 py-5">
+                                                                <span className="px-3 py-1 bg-slate-100 rounded-full text-xs font-bold text-slate-600">
+                                                                    {ticket.product}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-8 py-5">
+                                                                <div className="text-sm font-medium text-slate-700 max-w-[200px] truncate">{ticket.subject}</div>
+                                                                <div className="text-xs text-slate-500 mt-1">{ticket.customer}</div>
+                                                            </td>
+                                                            <td className="px-8 py-5">
+                                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold capitalize border ${ticket.status === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                                    ticket.status === 'closed' ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                                                                        ticket.status === 'overdue' ? 'bg-red-50 text-red-600 border-red-100' :
+                                                                            ticket.status === 'in_progress' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                                                                ticket.status === 'new' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                                    'bg-slate-50 text-slate-500 border-slate-200' // Pending
+                                                                    }`}>
+                                                                    {ticket.status === 'done' || ticket.status === 'closed' ? <CheckCircle2 size={12} /> :
+                                                                        ticket.status === 'overdue' ? <AlertCircle size={12} /> :
+                                                                            ticket.status === 'in_progress' ? <Activity size={12} /> :
+                                                                                <Clock size={12} />}
+                                                                    {ticket.status.replace('_', ' ')}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-8 py-5">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className={`w-2 h-2 rounded-full ${ticket.priority === 'high' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]' :
+                                                                        ticket.priority === 'medium' ? 'bg-amber-400' :
+                                                                            'bg-emerald-400'
+                                                                        }`} />
+                                                                    <span className="text-sm font-bold text-slate-600 capitalize">{ticket.priority}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-8 py-5">
+                                                                <span className="text-sm font-bold text-slate-600">{ticket.responseTime}h</span>
+                                                            </td>
+                                                            <td className="px-8 py-5 text-sm font-medium text-slate-500">
+                                                                {new Date(ticket.date).toLocaleDateString('id-ID', {
+                                                                    day: 'numeric',
+                                                                    month: 'short',
+                                                                    year: 'numeric'
+                                                                })}
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan={7} className="px-8 py-12 text-center text-slate-400">
+                                                            <div className="flex flex-col items-center justify-center gap-2">
+                                                                <Search size={32} className="text-slate-200" />
+                                                                <p>No tickets found for "{modalSearch}"</p>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </motion.div>
+                            </div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
 
             </div>
         </div>

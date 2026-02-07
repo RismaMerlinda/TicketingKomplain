@@ -11,6 +11,7 @@ import { useAuth } from "../../context/AuthContext";
 import { logActivity } from "@/lib/activity";
 import ConfirmModal from "@/app/components/ConfirmModal";
 import { getStoredTickets } from "@/lib/tickets";
+import { getStoredProducts } from "@/lib/products";
 
 // Type extension for editable fields if needed, or just use ProductData
 interface ProductForm extends ProductData {
@@ -19,7 +20,7 @@ interface ProductForm extends ProductData {
 
 export default function ProductsPage() {
     const router = useRouter();
-    const [products, setProducts] = useState<Record<string, ProductData>>(MOCK_PRODUCTS);
+    const [products, setProducts] = useState<Record<string, ProductData>>({}); // Removed MOCK_PRODUCTS default to avoid hydration mismatch
     const [tickets, setTickets] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -42,64 +43,43 @@ export default function ProductsPage() {
     });
 
     useEffect(() => {
-        // Fetch products from backend API
-        const fetchProducts = async () => {
+        // Fetch products using shared helper
+        const fetchProductsData = async () => {
             try {
-                const res = await fetch('http://127.0.0.1:5900/api/products');
-                const contentType = res.headers.get("content-type");
-                if (res.ok && contentType && contentType.includes("application/json")) {
-                    const data = await res.json();
-                    const productCount = Object.keys(data).length;
+                const productsList = await getStoredProducts();
 
-                    // If API is empty, check localStorage and migrate
-                    if (productCount === 0) {
-                        const stored = localStorage.getItem('products');
-                        if (stored) {
-                            const localProducts = JSON.parse(stored);
-                            console.log('📦 Migrating products from localStorage to MongoDB...');
-
-                            // Migrate each product to MongoDB
-                            for (const [id, product] of Object.entries(localProducts)) {
-                                try {
-                                    await fetch('http://127.0.0.1:5900/api/products', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify(product)
-                                    });
-                                } catch (err) {
-                                    console.error('Failed to migrate product:', id, err);
-                                }
-                            }
-
-                            // Set local state immediately
-                            setProducts(localProducts);
-                            return;
-                        }
-                    }
-
-                    setProducts(data);
+                if (productsList && productsList.length > 0) {
+                    // Convert array back to object map for this component
+                    const productsMap: Record<string, ProductData> = {};
+                    productsList.forEach((p: any) => {
+                        // Ensure stats structure exists (getStoredProducts only returns basic fields)
+                        productsMap[p.id] = {
+                            ...p,
+                            stats: p.stats || { total: 0, active: 0, resolved: 0, satisfaction: 5.0 },
+                            trend: p.trend || [],
+                            dist: p.dist || [],
+                            activity: p.activity || []
+                        };
+                    });
+                    setProducts(productsMap);
                 } else {
-                    console.error("Failed to fetch products from API");
-                    // Fallback to localStorage
-                    const stored = localStorage.getItem('products');
-                    if (stored) {
-                        setProducts(JSON.parse(stored));
-                    }
+                    // Fallback to MOCK if really empty and no localStorage
+                    setProducts(MOCK_PRODUCTS);
                 }
-            } catch (e) {
-                console.error("API Connection Error", e);
-                // Fallback to localStorage
-                const stored = localStorage.getItem('products');
-                if (stored) {
-                    setProducts(JSON.parse(stored));
-                }
+            } catch (err) {
+                console.error("Failed to load products:", err);
+                setProducts(MOCK_PRODUCTS);
             }
         };
 
-        fetchProducts();
+        fetchProductsData();
 
-        // Load tickets for dynamic stats
+        const handleUpdate = () => fetchProductsData();
+        window.addEventListener('productsUpdated', handleUpdate);
+        return () => window.removeEventListener('productsUpdated', handleUpdate);
+    }, []);
 
+    useEffect(() => {
         const loadTickets = async () => {
             const t = await getStoredTickets();
             setTickets(t);
@@ -112,13 +92,14 @@ export default function ProductsPage() {
     const { user } = useAuth();
 
     const filteredProducts = Object.values(products).filter(p => {
+        if (!p) return false;
         // Role based filtering
         if (user?.role === ROLES.PRODUCT_ADMIN && user?.productId) {
             if (p.id !== user.productId) return false;
         }
 
-        const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.id.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = (p.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (p.id || "").toLowerCase().includes(searchQuery.toLowerCase());
 
         return matchesSearch;
     });
@@ -187,21 +168,8 @@ export default function ProductsPage() {
             // Update Local State from Response or manually
             setProducts(prev => ({ ...prev, [newProductId]: newProduct }));
 
-            // Sync Admin (Local Storage for now, ideally also backend)
-            if (formData.adminEmail && formData.adminPassword) {
-                const storedUsersStr = localStorage.getItem('ticketing_users');
-                let users = storedUsersStr ? JSON.parse(storedUsersStr) : [];
-                users = users.filter((u: any) => u.productId !== newProductId && u.email !== formData.adminEmail);
-                const newUser = {
-                    email: formData.adminEmail,
-                    password: formData.adminPassword,
-                    name: `Admin ${formData.name}`,
-                    role: ROLES.PRODUCT_ADMIN,
-                    productId: newProductId
-                };
-                users.push(newUser);
-                localStorage.setItem('ticketing_users', JSON.stringify(users));
-            }
+            // Dispatch event used by other components
+            window.dispatchEvent(new Event('productsUpdated'));
 
             // Log Activity
             logActivity(
@@ -242,6 +210,10 @@ export default function ProductsPage() {
                 delete updated[id];
                 return updated;
             });
+
+            // Dispatch event used by other components
+            window.dispatchEvent(new Event('productsUpdated'));
+
 
             // Log Activity
             logActivity(
@@ -285,15 +257,13 @@ export default function ProductsPage() {
                         />
                     </div>
                     {user?.role === ROLES.SUPER_ADMIN && (
-                        <motion.button
-                            whileHover={{ scale: 1.05, boxShadow: "0 20px 25px -5px rgb(21 0 255 / 0.3)" }}
-                            whileTap={{ scale: 0.95 }}
+                        <button
                             onClick={handleAddClick}
                             className="flex items-center gap-2 bg-[#1500FF] hover:bg-[#1500FF]/90 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20"
                         >
                             <Plus size={20} strokeWidth={3} />
                             Add New Product
-                        </motion.button>
+                        </button>
                     )}
                 </div>
 
@@ -380,7 +350,7 @@ export default function ProductsPage() {
                                 </div>
 
                                 <motion.button
-                                    onClick={() => router.push(`/dashboard/tickets?product=${product.id}`)}
+                                    onClick={() => router.push(`/dashboard?product=${product.id}`)}
                                     whileHover="hover"
                                     initial="rest"
                                     animate="rest"

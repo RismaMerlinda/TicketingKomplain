@@ -426,8 +426,12 @@ export default function TicketsPage() {
     const [endTime, setEndTime] = useState("");
 
     const { user } = useAuth();
+    // searchParams already defined above as `searchParams`
+    // using initialProductFilter (derived from searchParams.get('product') at top of function) 
+    const productParam = initialProductFilter;
 
     const roleFilteredTickets = tickets.filter(ticket => {
+        // 1. If Product Admin, restrict strict to their product
         if (user?.role === ROLES.PRODUCT_ADMIN && user?.productId) {
             const productInfo = products[user.productId as keyof typeof products];
             if (productInfo) {
@@ -438,8 +442,26 @@ export default function TicketsPage() {
                 // Robust match: name, ID, or partial ID match
                 const isMatch = tProd === pName || tProd === pId || tProd.includes(pId) || pId.includes(tProd);
                 if (!isMatch) return false;
+            } else {
+                // Fallback if product info missing but ID matches
+                if (!ticket.product.toLowerCase().includes(user.productId.toLowerCase())) return false;
             }
         }
+
+        // 2. If Super Admin (or others) has ?product=XXX in URL, filter by that
+        if (productParam && user?.role === ROLES.SUPER_ADMIN) {
+            const tProd = ticket.product.toLowerCase().trim();
+            const pParam = productParam.toLowerCase().trim();
+
+            // Try to find product name from param ID if possible
+            const productInfo = products[pParam];
+            const pName = productInfo ? productInfo.name.toLowerCase().trim() : "";
+
+            // Match against ID or Name
+            const isMatch = tProd === pParam || tProd === pName || tProd.includes(pParam) || (pName && tProd.includes(pName));
+            if (!isMatch) return false;
+        }
+
         return true;
     });
 

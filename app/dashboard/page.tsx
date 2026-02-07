@@ -173,8 +173,12 @@ import { ROLES } from "@/lib/auth";
 import { getStoredTickets } from "@/lib/tickets";
 
 
+
 function DashboardContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const productParam = searchParams.get("product");
+
     const { user } = useAuth();
     const [greeting, setGreeting] = useState("Welcome back");
     const [filterRange, setFilterRange] = useState<"30d" | "7d">("30d");
@@ -203,8 +207,8 @@ function DashboardContent() {
         return () => window.removeEventListener('activityUpdated', refresh);
     }, [user]);
 
-    const searchParams = useSearchParams();
-    const productIdParam = searchParams.get('product');
+    // searchParams defined above
+    const productIdParam = productParam;
 
     // Combine Mock Data with potentially LocalStorage data
     const [products, setProducts] = useState(MOCK_PRODUCTS);
@@ -268,15 +272,46 @@ function DashboardContent() {
     };
 
     const [realTickets, setRealTickets] = useState<any[]>([]);
+    const [realProducts, setRealProducts] = useState<any[]>([]);
 
+    // Load Products from MongoDB
     useEffect(() => {
-        const stored = localStorage.getItem('products');
-        if (stored) {
+        const loadProducts = async () => {
             try {
-                const parsed = JSON.parse(stored);
-                setProducts(prev => ({ ...prev, ...parsed }));
-            } catch (e) { console.error("Failed to load products", e); }
-        }
+                const response = await fetch('http://127.0.0.1:5900/api/products');
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Check if data is array or object
+                    const productsArray = Array.isArray(data) ? data : Object.values(data);
+                    setRealProducts(productsArray);
+
+                    // Also update MOCK_PRODUCTS format for compatibility
+                    const productsObj: any = {};
+                    productsArray.forEach((p: any) => {
+                        productsObj[p.id] = {
+                            id: p.id,
+                            name: p.name,
+                            description: p.description,
+                            icon: p.icon,
+                            adminEmail: p.adminEmail,
+                            adminPassword: p.adminPassword,
+                            stats: { total: 0, active: 0, resolved: 0, satisfaction: 4.5 },
+                            trend: [],
+                            dist: [],
+                            activity: []
+                        };
+                    });
+                    setProducts(productsObj);
+                }
+            } catch (e) {
+                console.error("Failed to load products from API", e);
+            }
+        };
+
+        loadProducts();
+        window.addEventListener('productsUpdated', loadProducts);
+        return () => window.removeEventListener('productsUpdated', loadProducts);
     }, []);
 
     // Load Tickets for real stats
@@ -607,8 +642,9 @@ function DashboardContent() {
                                 </button>
                             )}
                         </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {user?.role === 'SUPER_ADMIN' ? (
+                            {!productIdParam && user?.role === 'SUPER_ADMIN' ? (
                                 <>
                                     {Object.values(products).map((prod: any) => {
                                         // Dynamic stats for each product in the grid
@@ -618,8 +654,7 @@ function DashboardContent() {
                                         }).length;
                                         const pActive = realTickets.filter(t => {
                                             const tProd = String(t.product || "").toLowerCase();
-                                            const isMatch = tProd === prod.id.toLowerCase() || tProd === prod.name.toLowerCase();
-                                            return isMatch && ['New', 'In Progress', 'Pending', 'Overdue'].includes(t.status);
+                                            return (tProd === prod.id.toLowerCase() || tProd === prod.name.toLowerCase()) && ['New', 'In Progress', 'Pending', 'Overdue'].includes(t.status);
                                         }).length;
 
                                         return (
@@ -629,20 +664,24 @@ function DashboardContent() {
                                                 name={prod.name}
                                                 total={pTotal}
                                                 active={pActive}
+                                                // Default URL: Go to Specific Dashboard View
+                                                url={`/dashboard?product=${prod.id}`}
                                             />
                                         );
                                     })}
-
-
                                 </>
                             ) : (
+                                // Show Single Card if Filtered (Super Admin) or Product Admin
                                 <ProductStatCard
-                                    id={user?.productId}
-                                    name={user?.productId ? (products[user.productId]?.name || user.productId) : "My Product"}
+                                    id={effectiveProductId || user?.productId}
+                                    name={effectiveProductId && products[effectiveProductId] ? products[effectiveProductId].name : (user?.productId ? (products[user.productId]?.name || user.productId) : "My Product")}
                                     total={calcStats.total}
                                     active={calcStats.inProgress + calcStats.new + calcStats.pending + calcStats.overdue}
+                                    // URL: Go to Tickets Page since we are already on Dashboard View
+                                    url={`/dashboard/tickets?product=${effectiveProductId || user?.productId || ""}`}
                                 />
                             )}
+
                         </div>
                     </div>
 
