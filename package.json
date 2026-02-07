@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "concurrently \"next dev\" \"npm run dev-backend\"",
     "dev-backend": "npm --prefix backend run dev",
+    "db-export": "node backend/export-db.js",
+    "db-import": "node backend/import-db.js",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
