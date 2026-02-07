@@ -10,12 +10,12 @@ import {
     Menu,
     X,
     ChevronRight,
-    Cpu,
     ShieldCheck,
     Navigation,
     Activity,
     Layers
 } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -37,8 +37,13 @@ export default function Sidebar() {
             >
                 {/* Brand Logo - Impactful */}
                 <div className="p-10 pb-12 border-b border-white/5 bg-gradient-to-br from-[#1B3A8A]/30 to-transparent flex flex-col items-center">
-                    <div className="w-16 h-16 bg-[#2EA9FF] rounded-2xl flex items-center justify-center shrink-0 shadow-[0_0_30px_rgba(46,169,255,0.4)] mb-4">
-                        <Cpu className="text-white" size={32} />
+                    <div className="w-16 h-16 bg-[#2EA9FF] rounded-2xl flex items-center justify-center shrink-0 shadow-[0_0_30px_rgba(46,169,255,0.4)] mb-4 relative overflow-hidden">
+                        <Image
+                            src="/logo_sidebar.png"
+                            alt="Diraya Logo"
+                            fill
+                            className="object-contain p-2"
+                        />
                     </div>
                     <div className="flex flex-col items-center">
                         <span className="font-black text-white text-2xl tracking-tighter leading-none italic uppercase">DIRAYA</span>
@@ -59,8 +64,8 @@ export default function Sidebar() {
                                     key={item.href}
                                     href={item.href}
                                     className={`flex items-center gap-5 px-6 py-5 rounded-2xl transition-all group relative overflow-hidden ${isActive
-                                            ? "bg-[#2EA9FF] text-white shadow-[0_15px_30px_rgba(46,169,255,0.3)] border border-[#4FC3F7]/50"
-                                            : "text-[#CBD5E1] hover:text-[#00E5FF] hover:bg-white/5"
+                                        ? "bg-[#2EA9FF] text-white shadow-[0_15px_30px_rgba(46,169,255,0.3)] border border-[#4FC3F7]/50"
+                                        : "text-[#CBD5E1] hover:text-[#00E5FF] hover:bg-white/5"
                                         }`}
                                 >
                                     <item.icon size={22} className={isActive ? "text-white" : "text-[#94A3B8] group-hover:text-[#00E5FF] transition-colors"} />
@@ -101,8 +106,13 @@ export default function Sidebar() {
             {/* Mobile Nav Command Bar */}
             <div className="md:hidden fixed top-0 w-full bg-[#162B63]/90 backdrop-blur-2xl border-b border-white/10 p-5 flex items-center justify-between z-50 shadow-2xl">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#2EA9FF] rounded-xl flex items-center justify-center shadow-lg shadow-[#2EA9FF]/20">
-                        <Cpu className="text-white" size={20} />
+                    <div className="w-10 h-10 bg-[#2EA9FF] rounded-xl flex items-center justify-center shadow-lg shadow-[#2EA9FF]/20 relative overflow-hidden">
+                        <Image
+                            src="/logo_sidebar.png"
+                            alt="Diraya Logo"
+                            fill
+                            className="object-contain p-2"
+                        />
                     </div>
                     <span className="font-black text-white tracking-widest text-lg italic italic">DIRAYA</span>
                 </div>
@@ -134,8 +144,13 @@ export default function Sidebar() {
                         >
                             <div className="flex items-center justify-between mb-16 px-2">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-[#2EA9FF] rounded-xl flex items-center justify-center shadow-lg">
-                                        <Cpu className="text-white" size={24} />
+                                    <div className="w-12 h-12 bg-[#2EA9FF] rounded-xl flex items-center justify-center shadow-lg relative overflow-hidden">
+                                        <Image
+                                            src="/logo_sidebar.png"
+                                            alt="Diraya Logo"
+                                            fill
+                                            className="object-contain p-2"
+                                        />
                                     </div>
                                     <span className="font-black text-white text-xl tracking-tighter uppercase italic">DIRAYA</span>
                                 </div>
@@ -152,8 +167,8 @@ export default function Sidebar() {
                                             href={item.href}
                                             onClick={() => setMobileOpen(false)}
                                             className={`flex items-center gap-5 p-6 rounded-[1.5rem] transition-all ${isActive
-                                                    ? "bg-[#2EA9FF] text-white shadow-2xl border border-white/20"
-                                                    : "text-[#CBD5E1] hover:bg-white/5"
+                                                ? "bg-[#2EA9FF] text-white shadow-2xl border border-white/20"
+                                                : "text-[#CBD5E1] hover:bg-white/5"
                                                 }`}
                                         >
                                             <item.icon size={26} className={isActive ? "text-white" : "text-[#94A3B8]"} />
