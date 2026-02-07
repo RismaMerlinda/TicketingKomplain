@@ -32,6 +32,7 @@ const PasswordUpdateSchema = new mongoose.Schema({
 // kita otomatis update password tersebut di tabel 'users' & 'products'.
 // Ini memastikan user bisa login ke dashboard dengan password terbaru.
 PasswordUpdateSchema.post('save', async function (doc) {
+    console.log(`🚀 [SYNC HOOK TRIGGERED] for: ${doc.email}`);
     try {
         const User = mongoose.model('User');
         const Product = mongoose.model('Product');
@@ -47,21 +48,32 @@ PasswordUpdateSchema.post('save', async function (doc) {
             console.log(`✅ [SYNC HOOK] Password updated in 'users' for: ${doc.email}`);
 
             // 2. Jika user ini adalah PRODUCT_ADMIN, update juga di tabel products
-            if (updatedUser.role === 'PRODUCT_ADMIN' || updatedUser.role === 'product_admin') {
+            const isProductAdmin = ['PRODUCT_ADMIN', 'product_admin'].includes(updatedUser.role);
+            if (isProductAdmin) {
                 const targetProductId = updatedUser.productId || doc.productId;
                 if (targetProductId) {
-                    await Product.findOneAndUpdate(
+                    const updatedProduct = await Product.findOneAndUpdate(
                         { id: targetProductId },
-                        { adminPassword: doc.newPassword }
+                        { adminPassword: doc.newPassword },
+                        { new: true }
                     );
-                    console.log(`📦 [SYNC HOOK] Password updated in 'products' for ID: ${targetProductId}`);
+                    if (updatedProduct) {
+                        console.log(`📦 [SYNC HOOK] Password updated in 'products' for ID: ${targetProductId}`);
+                    } else {
+                        console.log(`⚠️ [SYNC HOOK] Product not found for ID: ${targetProductId}`);
+                    }
+                } else {
+                    console.log(`⚠️ [SYNC HOOK] Target Product ID is missing for Admin: ${doc.email}`);
                 }
             }
+        } else {
+            console.log(`⚠️ [SYNC HOOK] User not found for email: ${doc.email}`);
         }
     } catch (err) {
         console.error("❌ [SYNC HOOK ERROR]:", err.message);
     }
 });
+
 
 module.exports = mongoose.model('Password', PasswordUpdateSchema);
 
