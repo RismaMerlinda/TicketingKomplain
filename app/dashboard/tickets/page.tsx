@@ -31,7 +31,10 @@ import {
     Twitter,
     Smartphone,
     ClipboardList,
-    HelpCircle
+    HelpCircle,
+    Edit3,
+    Check,
+    Save
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -426,6 +429,11 @@ export default function TicketsPage() {
     const [endTime, setEndTime] = useState("");
 
     const { user } = useAuth();
+
+    // Detail Edit State
+    const [isEditingDetail, setIsEditingDetail] = useState(false);
+    const [editedDescription, setEditedDescription] = useState("");
+    const [editedSolution, setEditedSolution] = useState("");
     // searchParams already defined above as `searchParams`
     // using initialProductFilter (derived from searchParams.get('product') at top of function) 
     const productParam = initialProductFilter;
@@ -595,6 +603,27 @@ export default function TicketsPage() {
         setDeleteModal({ isOpen: false, ticketId: null });
     };
 
+    const handleUpdateDetail = async () => {
+        if (!selectedTicket) return;
+
+        const updated = {
+            ...selectedTicket,
+            description: editedDescription,
+            solution: editedSolution
+        };
+        const success = await updateTicket(updated);
+
+        if (success) {
+            logActivity(`Ticket ${selectedTicket.code} content updated`, user?.name || "System", null);
+            const latest = await getStoredTickets();
+            setTickets(latest);
+            setSelectedTicket(updated);
+            setIsEditingDetail(false);
+        } else {
+            setAlertModal({ isOpen: true, message: "Failed to update ticket details!" });
+        }
+    };
+
     const adjustDate = (current: string, days: number, setter: (v: string) => void) => {
         const d = current ? new Date(current) : new Date();
         d.setDate(d.getDate() + days);
@@ -612,7 +641,7 @@ export default function TicketsPage() {
     return (
         <div className="min-h-screen pb-12 bg-[#F8FAFC]">
             {/* Header */}
-            <Header title="Tickets" subtitle="Manage Support Requests & Complaints" hideSearch={true} />
+            <Header title="Tickets" subtitle="Manage Support Requests & Complaints" />
 
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -622,22 +651,24 @@ export default function TicketsPage() {
                 {/* Active Product Filter Banner */}
                 {productFilter && (
                     <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center justify-between"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-blue-50 border border-blue-100 rounded-3xl p-5 flex items-center justify-between mb-4 shadow-sm"
                     >
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                                <Filter size={16} />
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-[#1500FF] shadow-sm border border-blue-100">
+                                <Filter size={20} strokeWidth={2.5} />
                             </div>
                             <div>
-                                <p className="text-xs font-bold uppercase text-blue-400">Active Filter</p>
-                                <p className="text-sm font-bold text-blue-800">Showing tickets for <span className="underline decoration-blue-300 decoration-2 underline-offset-2">{Object.values(products).find(p => p.id === productFilter)?.name || productFilter}</span></p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-[#1500FF]/60 mb-0.5">Active Ticket Filter</p>
+                                <p className="text-base font-bold text-slate-800">
+                                    Showing tickets for <span className="text-[#1500FF] uppercase">{Object.values(products).find(p => p.id === productFilter)?.name || productFilter}</span>
+                                </p>
                             </div>
                         </div>
                         <button
                             onClick={clearProductFilter}
-                            className="bg-white px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition-all shadow-sm"
+                            className="bg-white px-6 py-3 rounded-2xl text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition-all shadow-sm active:scale-95"
                         >
                             Clear Filter
                         </button>
@@ -681,7 +712,7 @@ export default function TicketsPage() {
                 </div>
 
                 {/* 3. Ticket Content - Balanced gap */}
-                <div className="relative min-h-[200px] pt-4 pb-8">
+                <div className={`relative ${filteredTickets.length === 0 ? 'min-h-0 pt-2 pb-0' : 'min-h-[200px] pt-4 pb-8'}`}>
                     <AnimatePresence initial={false} mode="wait" custom={direction}>
                         <motion.div
                             key={activeTab + viewMode}
@@ -696,7 +727,12 @@ export default function TicketsPage() {
                             {viewMode === "GRID" && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                     {filteredTickets.map(ticket => (
-                                        <TicketCard key={ticket.id} ticket={ticket} onClick={() => setSelectedTicket(ticket)} />
+                                        <TicketCard key={ticket.id} ticket={ticket} onClick={() => {
+                                            setSelectedTicket(ticket);
+                                            setEditedDescription(ticket.description || "");
+                                            setEditedSolution(ticket.solution || "");
+                                            setIsEditingDetail(false);
+                                        }} />
                                     ))}
                                 </div>
                             )}
@@ -705,7 +741,12 @@ export default function TicketsPage() {
                             {viewMode === "LIST" && (
                                 <div className="flex flex-col gap-3 max-w-[1200px] mx-auto w-full">
                                     {filteredTickets.map(ticket => (
-                                        <TicketListItem key={ticket.id} ticket={ticket} onClick={() => setSelectedTicket(ticket)} />
+                                        <TicketListItem key={ticket.id} ticket={ticket} onClick={() => {
+                                            setSelectedTicket(ticket);
+                                            setEditedDescription(ticket.description || "");
+                                            setEditedSolution(ticket.solution || "");
+                                            setIsEditingDetail(false);
+                                        }} />
                                     ))}
                                 </div>
                             )}
@@ -728,7 +769,12 @@ export default function TicketsPage() {
                                             </thead>
                                             <tbody>
                                                 {filteredTickets.map(ticket => (
-                                                    <TicketTableRow key={ticket.id} ticket={ticket} onClick={() => setSelectedTicket(ticket)} />
+                                                    <TicketTableRow key={ticket.id} ticket={ticket} onClick={() => {
+                                                        setSelectedTicket(ticket);
+                                                        setEditedDescription(ticket.description || "");
+                                                        setEditedSolution(ticket.solution || "");
+                                                        setIsEditingDetail(false);
+                                                    }} />
                                                 ))}
                                             </tbody>
                                         </table>
@@ -743,7 +789,7 @@ export default function TicketsPage() {
 
                 {/* Empty State */}
                 {filteredTickets.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-24 text-slate-400 bg-white rounded-3xl border border-dashed border-slate-200 col-span-full">
+                    <div className="flex flex-col items-center justify-center py-12 text-slate-400 bg-white rounded-3xl border border-dashed border-slate-200 col-span-full">
                         <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4"><Search size={32} className="text-slate-300" /></div>
                         <h3 className="text-lg font-bold text-slate-700">No tickets found</h3>
                         <p className="text-sm mb-6">Try different keywords or filters</p>
@@ -853,7 +899,7 @@ export default function TicketsPage() {
                                 <button onClick={() => setSelectedTicket(null)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500"><X size={20} /></button>
                             </div>
 
-                            <div className="p-8 overflow-y-auto space-y-8">
+                            <div className="p-8 overflow-y-auto space-y-8 flex-1">
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                                     <div><p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Customer</p><p className="font-medium text-slate-700 flex items-center gap-2"><User size={14} className="text-[#1500FF]" /> {selectedTicket.customer}</p></div>
                                     <div><p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Product</p><p className={`font-bold ${getProductStyles(selectedTicket.product).text}`}>{selectedTicket.product}</p></div>
@@ -861,11 +907,60 @@ export default function TicketsPage() {
                                     <div><p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Priority</p><p className="font-medium text-slate-700">{selectedTicket.priority}</p></div>
                                 </div>
 
-                                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                                    <h4 className="text-xs font-bold uppercase text-slate-500 mb-3">Issue Description</h4>
-                                    <p className="text-slate-700 leading-relaxed text-sm">
-                                        {selectedTicket.description || "No detailed description provided for this ticket."}
-                                    </p>
+                                {/* Editable Description Section */}
+                                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 group">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-xs font-bold uppercase text-slate-500">Issue Description</h4>
+                                        <button
+                                            onClick={() => setIsEditingDetail(!isEditingDetail)}
+                                            className="p-2 bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-[#1500FF] hover:border-[#1500FF]/30 transition-all"
+                                            title="Edit Description"
+                                        >
+                                            <Edit3 size={14} />
+                                        </button>
+                                    </div>
+                                    {isEditingDetail ? (
+                                        <textarea
+                                            rows={4}
+                                            value={editedDescription}
+                                            onChange={(e) => setEditedDescription(e.target.value)}
+                                            className="w-full p-4 rounded-xl border-2 border-indigo-100 focus:border-[#1500FF] focus:ring-4 focus:ring-[#1500FF]/10 outline-none text-sm font-medium text-slate-800 transition-all bg-white"
+                                            placeholder="Update issue description..."
+                                        />
+                                    ) : (
+                                        <p className="text-slate-700 leading-relaxed text-sm">
+                                            {selectedTicket.description || "No detailed description provided for this ticket."}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Solution Section - Editable for Admins */}
+                                <div className={`p-6 rounded-2xl border ${selectedTicket.solution || isEditingDetail ? 'bg-emerald-50/50 border-emerald-100' : 'bg-slate-50 border-slate-100'} group`}>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-xs font-bold uppercase text-emerald-600 flex items-center gap-2">
+                                            <CheckCircle2 size={14} /> Official Solution
+                                        </h4>
+                                        <button
+                                            onClick={() => setIsEditingDetail(!isEditingDetail)}
+                                            className="p-2 bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-200 transition-all"
+                                            title="Edit Solution"
+                                        >
+                                            <Edit3 size={14} />
+                                        </button>
+                                    </div>
+                                    {isEditingDetail ? (
+                                        <textarea
+                                            rows={4}
+                                            value={editedSolution}
+                                            onChange={(e) => setEditedSolution(e.target.value)}
+                                            className="w-full p-4 rounded-xl border-2 border-emerald-100 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none text-sm font-medium text-slate-800 transition-all bg-white"
+                                            placeholder="Provide technical solution or response here..."
+                                        />
+                                    ) : (
+                                        <p className={`text-sm leading-relaxed ${selectedTicket.solution ? 'text-slate-700 font-medium' : 'text-slate-400 italic'}`}>
+                                            {selectedTicket.solution || "No official solution has been documented yet."}
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div>
@@ -884,9 +979,36 @@ export default function TicketsPage() {
                                 </div>
                             </div>
 
-                            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-                                <button onClick={() => setDeleteModal({ isOpen: true, ticketId: selectedTicket.id })} className="px-5 py-2.5 rounded-xl border border-rose-200 text-rose-500 font-bold hover:bg-rose-500 hover:text-white transition-all active:scale-95 flex items-center gap-2"><Trash2 size={16} /> Delete</button>
-                                <button onClick={() => setSelectedTicket(null)} className="px-6 py-2.5 rounded-xl bg-[#1500FF] text-white font-bold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 transition-all active:scale-95">Done</button>
+                            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-between gap-3">
+                                <div>
+                                    {!isEditingDetail && (
+                                        <button onClick={() => setDeleteModal({ isOpen: true, ticketId: selectedTicket.id })} className="px-5 py-2.5 rounded-xl border border-rose-200 text-rose-500 font-bold hover:bg-rose-500 hover:text-white transition-all active:scale-95 flex items-center gap-2"><Trash2 size={16} /> Delete</button>
+                                    )}
+                                </div>
+                                <div className="flex gap-3">
+                                    {isEditingDetail ? (
+                                        <>
+                                            <button
+                                                onClick={() => {
+                                                    setIsEditingDetail(false);
+                                                    setEditedDescription(selectedTicket.description || "");
+                                                    setEditedSolution(selectedTicket.solution || "");
+                                                }}
+                                                className="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-500 font-bold hover:bg-slate-100 transition-all active:scale-95"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={handleUpdateDetail}
+                                                className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-200 transition-all active:scale-95 flex items-center gap-2"
+                                            >
+                                                <Save size={16} /> Save Changes
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button onClick={() => setSelectedTicket(null)} className="px-10 py-2.5 rounded-xl bg-[#1500FF] text-white font-bold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 transition-all active:scale-95">Done</button>
+                                    )}
+                                </div>
                             </div>
                         </motion.div>
                     </div>

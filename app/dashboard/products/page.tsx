@@ -131,8 +131,8 @@ export default function ProductsPage() {
         if (!formData.id || !formData.name || !formData.adminEmail || !formData.adminPassword) {
             setAlertModal({
                 isOpen: true,
-                title: "Data Tidak Lengkap",
-                message: "Harap isi semua kolom wajib: ID Produk, Nama Produk, Email Admin, dan Password Admin."
+                title: "Incomplete Data",
+                message: "Please fill in all mandatory fields: Product ID, Product Name, Admin Email, and Admin Password."
             });
             return;
         }
@@ -256,15 +256,7 @@ export default function ProductsPage() {
                             className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1500FF]/10 focus:border-[#1500FF] transition-all duration-300 text-slate-800 placeholder:text-slate-400 shadow-sm hover:shadow-md"
                         />
                     </div>
-                    {user?.role === ROLES.SUPER_ADMIN && (
-                        <button
-                            onClick={handleAddClick}
-                            className="flex items-center gap-2 bg-[#1500FF] hover:bg-[#1500FF]/90 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20"
-                        >
-                            <Plus size={20} strokeWidth={3} />
-                            Add New Product
-                        </button>
-                    )}
+
                 </div>
 
                 {/* Product Grid */}
@@ -360,7 +352,7 @@ export default function ProductsPage() {
                                     }}
                                     className="w-full flex items-center justify-between px-6 py-3.5 rounded-xl border font-bold transition-all text-sm shadow-sm relative z-10 overflow-hidden group/btn"
                                 >
-                                    <span className="relative z-10">View Dashboard</span>
+                                    <span className="relative z-10">View Product</span>
                                     <motion.div
                                         variants={{
                                             rest: { x: 0 },

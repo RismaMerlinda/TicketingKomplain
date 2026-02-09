@@ -49,18 +49,19 @@ exports.login = async (req, res) => {
             });
         }
 
-        // Cari user berdasarkan email
-        let user = await User.findOne({ email });
+        // Cari user berdasarkan email (Case-Insensitive)
+        const normalizedEmail = String(email).toLowerCase();
+        let user = await User.findOne({ email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') } });
 
         // Jika user tidak ada di DB, cek apakah ini user default yang perlu di-auto-save
         if (!user) {
-            const defaultUser = DEFAULT_USERS.find(u => u.email === email);
+            const defaultUser = DEFAULT_USERS.find(u => u.email.toLowerCase() === normalizedEmail);
 
             if (defaultUser && defaultUser.password === password) {
                 // Buat user baru di DB dari data default
                 user = new User(defaultUser);
                 await user.save();
-                console.log(`✨ Auto-created default user in DB: ${email}`);
+                console.log(`✨ Auto-created default user in DB: ${normalizedEmail}`);
             } else {
                 return res.status(401).json({
                     success: false,

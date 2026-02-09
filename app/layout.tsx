@@ -10,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 import { AuthProvider } from "./context/AuthContext";
+import RouteGuard from "./components/RouteGuard";
 
 export default function RootLayout({
   children,
@@ -22,7 +23,9 @@ export default function RootLayout({
         className={`font-sans antialiased`}
       >
         <AuthProvider>
-          {children}
+          <RouteGuard>
+            {children}
+          </RouteGuard>
         </AuthProvider>
       </body>
     </html>

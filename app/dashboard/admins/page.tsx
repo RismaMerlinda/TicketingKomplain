@@ -395,7 +395,7 @@ export default function AdminsPage() {
                             </div>
 
                             <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
-                                <div className="space-y-5">
+                                <div className="space-y-8">
                                     {/* Profile Photo (Moved to Body like Product Logo) */}
                                     <div>
                                         <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5 px-1">Profile Photo</label>
@@ -441,7 +441,7 @@ export default function AdminsPage() {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4">
+                                    <div className="space-y-6">
                                         <div>
                                             <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5 px-1">Full Identity Name <span className="text-rose-500">*</span></label>
                                             <input
@@ -515,26 +515,27 @@ export default function AdminsPage() {
                                 </div>
                             </div>
 
-                            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                            <div className="p-6 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3">
                                 {editingUser && (
                                     <button
                                         onClick={() => setConfirmModal({ isOpen: true, type: "delete", data: editingUser.email })}
-                                        className="mr-auto text-rose-500 text-sm font-bold hover:bg-rose-50 px-4 py-2 rounded-lg transition-colors"
+                                        className="mr-auto flex items-center gap-2 text-rose-500 text-xs font-black uppercase tracking-widest hover:bg-rose-50 px-4 py-2.5 rounded-xl transition-all active:scale-95"
                                     >
-                                        Revoke Access
+                                        <Trash2 size={16} />
+                                        Remove Access
                                     </button>
                                 )}
                                 <button
                                     onClick={closeModal}
-                                    className="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-white hover:border-slate-300 transition-all"
+                                    className="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-500 font-bold text-sm hover:bg-white hover:border-slate-300 hover:text-slate-700 transition-all active:scale-95 shadow-sm"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleSaveUser}
-                                    className="px-6 py-2.5 rounded-xl bg-[#1500FF] text-white font-bold hover:bg-[#1500FF]/90 shadow-lg shadow-[#1500FF]/20 transition-all flex items-center gap-2"
+                                    className="px-8 py-2.5 rounded-xl bg-[#1500FF] text-white font-bold text-sm hover:bg-[#1100CC] shadow-[0_10px_20px_-5px_rgba(21,0,255,0.3)] transition-all active:scale-95 flex items-center gap-2"
                                 >
-                                    <Save size={18} />
+                                    <Save size={18} strokeWidth={2.5} />
                                     {editingUser ? "Save Changes" : "Grant Access"}
                                 </button>
                             </div>

@@ -64,8 +64,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         };
 
-        refresh();
-        setIsLoading(false);
+        const init = async () => {
+            await refresh();
+            setIsLoading(false);
+        };
+
+        init();
 
         // Listen for internal and external (tab) updates
         window.addEventListener('authUpdated', refresh);
@@ -81,16 +85,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const login = async (email: string, password: string): Promise<boolean> => {
         try {
+            const cleanEmail = String(email).trim();
             const response = await fetch(`${API_URL}/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ email: cleanEmail, password }),
             });
 
             if (!response.ok) {
-                console.error("Login failed with status:", response.status);
+                try {
+                    const errorData = await response.json();
+                    console.error("Login failed:", errorData.message || response.statusText);
+                } catch {
+                    console.error("Login failed with status:", response.status);
+                }
                 return false;
             }
 

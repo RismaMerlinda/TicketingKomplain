@@ -1,18 +1,28 @@
 "use client";
 
-import { Bell, Search, Settings, Menu, User, LogOut, ShieldCheck, HelpCircle, CheckCircle } from "lucide-react";
+import { Bell, Search, Settings, Menu, User, LogOut, ShieldCheck, HelpCircle, CheckCircle, Smartphone, LayoutDashboard, Package, FileBarChart, Laptop, Terminal, X, ArrowRight, Ticket, Activity, Users } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { getStoredLogs, formatRelativeTime, logActivity } from "@/lib/activity";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { ROLES } from "@/lib/auth";
 import ConfirmModal from "./ConfirmModal";
+
+interface SearchResult {
+    id: string;
+    title: string;
+    description: string;
+    category: 'page' | 'action' | 'product' | 'ticket';
+    href: string;
+    icon: any;
+}
 
 export default function Header({ title = "Overview", subtitle = "Operations Control Center", hideSearch = false }: { title?: string, subtitle?: string, hideSearch?: boolean }) {
     const { toggle } = useSidebar();
     const router = useRouter();
+    const pathname = usePathname();
     const [isNotifOpen, setIsNotifOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -102,6 +112,109 @@ export default function Header({ title = "Overview", subtitle = "Operations Cont
     };
 
 
+    const [searchTerm, setSearchTerm] = useState("");
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+    const searchContainerRef = useRef<HTMLDivElement>(null);
+
+    // Click outside listener for search results
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+                setIsSearchFocused(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // Global Search Index
+    const searchIndex: SearchResult[] = useMemo(() => {
+        const pages: SearchResult[] = [
+            { id: 'dash', title: 'Dashboard', description: 'System overview and metrics', category: 'page', href: '/dashboard', icon: LayoutDashboard },
+            { id: 'tix', title: 'Tickets', description: 'Manage and respond to support tickets', category: 'page', href: '/dashboard/tickets', icon: Ticket },
+            { id: 'prod', title: 'Products', description: 'Catalog of supported software', category: 'page', href: '/dashboard/products', icon: Package },
+            { id: 'rep', title: 'Reports', description: 'Analytics and data exports', category: 'page', href: '/dashboard/reports', icon: FileBarChart },
+            { id: 'act', title: 'Activity Logs', description: 'System event tracking', category: 'page', href: '/dashboard/activity', icon: Activity },
+            { id: 'pro', title: 'My Profile', description: 'Manage your account settings', category: 'page', href: '/dashboard/profile', icon: User },
+            { id: 'adm', title: 'Product Admins', description: 'User management and permissions', category: 'page', href: '/dashboard/admins', icon: Users },
+        ];
+
+        const actions: SearchResult[] = [
+            { id: 'new-tix', title: 'Create New Ticket', description: 'Submit a new issue to the system', category: 'action', href: '/dashboard/tickets', icon: Search },
+            { id: 'help', title: 'Support Center', description: 'Get help with using the system', category: 'action', href: '#', icon: HelpCircle },
+            { id: 'logout', title: 'Sign Out', description: 'Securely exit the dashboard', category: 'action', href: '#', icon: LogOut },
+        ];
+
+        // Add filter based on role if needed
+        return [...pages, ...actions];
+    }, []);
+
+    // Filtered results
+    const filteredResults = useMemo(() => {
+        if (!searchTerm.trim()) return [];
+        const term = searchTerm.toLowerCase();
+        return searchIndex.filter(item =>
+            item.title.toLowerCase().includes(term) ||
+            item.description.toLowerCase().includes(term) ||
+            item.category.toLowerCase().includes(term)
+        );
+    }, [searchTerm, searchIndex]);
+
+    useEffect(() => {
+        setSelectedIndex(0);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+                e.preventDefault();
+                searchInputRef.current?.focus();
+            }
+            if (isSearchFocused && filteredResults.length > 0) {
+                if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setSelectedIndex(prev => (prev + 1) % filteredResults.length);
+                } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setSelectedIndex(prev => (prev - 1 + filteredResults.length) % filteredResults.length);
+                } else if (e.key === "Enter") {
+                    e.preventDefault();
+                    const selected = filteredResults[selectedIndex];
+                    if (selected) {
+                        if (selected.href === '#') {
+                            if (selected.id === 'logout') setIsLogoutOpen(true);
+                        } else {
+                            router.push(selected.href);
+                        }
+                        setIsSearchFocused(false);
+                        setSearchTerm("");
+                    }
+                } else if (e.key === "Escape") {
+                    setIsSearchFocused(false);
+                }
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [isSearchFocused, filteredResults, selectedIndex, router]);
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        // Fallback to ticket search if no direct result selected but Enter pressed
+        if (searchTerm.trim() && filteredResults.length === 0) {
+            router.push(`/dashboard/tickets?search=${encodeURIComponent(searchTerm.trim())}`);
+            setSearchTerm("");
+            setIsSearchFocused(false);
+        } else if (filteredResults.length > 0) {
+            const selected = filteredResults[selectedIndex];
+            router.push(selected.href);
+            setSearchTerm("");
+            setIsSearchFocused(false);
+        }
+    };
+
     return (
         <header className="sticky top-0 z-30 w-full mb-0">
             {/* White Header Background with Glass Effect */}
@@ -132,24 +245,119 @@ export default function Header({ title = "Overview", subtitle = "Operations Cont
                 {/* Right: Actions */}
                 <div className="flex items-center gap-6">
 
-                    {/* Modern Search */}
-                    {!hideSearch && (
-                        <div className="relative group hidden lg:block">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Search className="text-slate-400 group-focus-within:text-[#1500FF] transition-colors" size={16} />
-                            </div>
-                            <input
-                                type="text"
-                                placeholder="Search system..."
-                                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#1500FF] focus:border-[#1500FF] transition-all w-64 shadow-sm"
-                            />
-                            <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                                <kbd className="hidden sm:inline-block px-1.5 py-0.5 rounded border border-slate-200 bg-white text-[10px] font-mono text-slate-400">Ctrl K</kbd>
-                            </div>
+                    {/* Modern Global Search */}
+                    {!hideSearch && pathname === '/dashboard' && (
+                        <div className="relative group hidden lg:block" ref={searchContainerRef}>
+                            <form onSubmit={handleSearch} className="relative z-50">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Search className={`transition-colors ${isSearchFocused ? 'text-[#1500FF]' : 'text-slate-400'}`} size={16} />
+                                </div>
+                                <input
+                                    ref={searchInputRef}
+                                    type="text"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onFocus={() => setIsSearchFocused(true)}
+                                    placeholder="Search system..."
+                                    className={`pl-9 pr-14 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#1500FF]/5 focus:border-[#1500FF] transition-all w-80 shadow-sm ${isSearchFocused ? 'bg-white' : ''}`}
+                                />
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                    {searchTerm && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setSearchTerm("")}
+                                            className="p-1 text-slate-300 hover:text-slate-500 transition-colors"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            </form>
+
+                            {/* Global Search Results Dropdown */}
+                            <AnimatePresence>
+                                {isSearchFocused && searchTerm.length > 0 && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                                        className="absolute top-full left-0 right-0 mt-3 bg-white rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] border border-slate-100 overflow-hidden z-[60] py-4"
+                                    >
+                                        <div className="max-h-[400px] overflow-y-auto px-2">
+                                            {filteredResults.length > 0 ? (
+                                                <div className="space-y-4">
+                                                    {/* Group results by category */}
+                                                    {['page', 'product', 'ticket', 'action'].map(cat => {
+                                                        const catResults = filteredResults.filter(r => r.category === cat);
+                                                        if (catResults.length === 0) return null;
+
+                                                        return (
+                                                            <div key={cat} className="space-y-1">
+                                                                <p className="px-4 py-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">{cat}s</p>
+                                                                {catResults.map((result, idx) => {
+                                                                    const globalIdx = filteredResults.indexOf(result);
+                                                                    const isSelected = selectedIndex === globalIdx;
+
+                                                                    return (
+                                                                        <button
+                                                                            key={result.id}
+                                                                            onMouseEnter={() => setSelectedIndex(globalIdx)}
+                                                                            onClick={() => {
+                                                                                router.push(result.href);
+                                                                                setSearchTerm("");
+                                                                                setIsSearchFocused(false);
+                                                                            }}
+                                                                            className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all text-left ${isSelected ? 'bg-[#1500FF]/5 ring-1 ring-[#1500FF]/10' : 'hover:bg-slate-50'}`}
+                                                                        >
+                                                                            <div className={`p-2.5 rounded-xl transition-colors ${isSelected ? 'bg-white text-[#1500FF] shadow-sm' : 'bg-slate-50 text-slate-400'}`}>
+                                                                                <result.icon size={18} />
+                                                                            </div>
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <p className={`text-sm font-bold transition-colors ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>{result.title}</p>
+                                                                                <p className="text-xs text-slate-400 truncate font-medium">{result.description}</p>
+                                                                            </div>
+                                                                            {isSelected && <ArrowRight size={14} className="text-[#1500FF] animate-in slide-in-from-left-2" />}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <div className="py-12 text-center text-slate-400 space-y-3">
+                                                    <div className="h-12 w-12 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto">
+                                                        <Search size={24} className="opacity-20" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-black uppercase tracking-widest text-slate-300">No matching features found</p>
+                                                        <p className="text-xs font-medium text-slate-400 mt-1">Try searching for 'tickets', 'reports', or 'profile'</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Bottom Footer for search */}
+                                        <div className="mt-4 px-6 py-3 border-t border-slate-50 bg-slate-50/30 flex items-center justify-between">
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-1.5 opacity-50">
+                                                    <kbd className="px-1 py-0.5 rounded border border-slate-200 bg-white text-[9px] font-mono text-slate-400">↑↓</kbd>
+                                                    <span className="text-[10px] font-bold text-slate-400">Navigate</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 opacity-50">
+                                                    <kbd className="px-1 py-0.5 rounded border border-slate-200 bg-white text-[9px] font-mono text-slate-400">Enter</kbd>
+                                                    <span className="text-[10px] font-bold text-slate-400">Select</span>
+                                                </div>
+                                            </div>
+                                            <p className="text-[10px] font-black text-[#1500FF] uppercase tracking-tighter">Global System Search</p>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     )}
 
-                    {!hideSearch && <div className="h-8 w-px bg-slate-200 mx-2 hidden sm:block" />}
+                    {!hideSearch && pathname === '/dashboard' && <div className="h-8 w-px bg-slate-200 mx-2 hidden sm:block" />}
 
                     {/* Action Icons */}
                     <div className="flex items-center gap-3">

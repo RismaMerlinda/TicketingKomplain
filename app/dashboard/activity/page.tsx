@@ -2,7 +2,7 @@
 
 import Header from "@/app/components/Header";
 import { useAuth } from "../../context/AuthContext";
-import { Activity, User, Clock, Package, Calendar, Filter, X, ChevronUp, ChevronDown } from "lucide-react";
+import { Activity, User, Clock, Package, Calendar, Filter, X, ChevronUp, ChevronDown, ChevronRight, Info, ShieldCheck, Mail, Globe, MapPin } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ROLES } from "@/lib/auth";
 import { getStoredLogs, formatRelativeTime } from "@/lib/activity";
@@ -13,6 +13,7 @@ export default function ActivityPage() {
     const [logs, setLogs] = useState<any[]>([]);
     const [dateFilter, setDateFilter] = useState("");
     const [currentTime, setCurrentTime] = useState(Date.now());
+    const [expandedId, setExpandedId] = useState<string | null>(null);
 
     // Helper: Get date string in local WIB time (UTC+7)
     const getLocalDateString = (ts: number | string | Date) => {
@@ -135,47 +136,126 @@ export default function ActivityPage() {
 
                     <div className="divide-y divide-slate-50">
                         <AnimatePresence mode="popLayout">
-                            {logs.map((log, idx) => {
+                            {logs.map((log) => {
                                 const styles = getActivityStyles(log.text);
                                 return (
-                                    <motion.div
-                                        layout
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
-                                        transition={{ duration: 0.2 }}
-                                        key={log.id}
-                                        className="p-6 hover:bg-slate-50 transition-colors flex items-start gap-4 group"
-                                    >
-                                        <div className={`w-10 h-10 rounded-2xl ${styles.iconBg} border border-transparent flex items-center justify-center ${styles.iconColor} transition-all`}>
-                                            <Clock size={20} />
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <p className="font-bold text-slate-800 group-hover:text-[#1500FF] transition-colors">{log.text}</p>
-                                                <div className="flex items-center gap-2 text-slate-400">
-                                                    <span className="text-[11px] font-bold uppercase tracking-wider">
-                                                        {formatRelativeTime(log.timestamp)}
+                                    <div key={log.id} className="border-b border-slate-50 last:border-0">
+                                        <motion.div
+                                            layout
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, scale: 0.95 }}
+                                            transition={{ duration: 0.2 }}
+                                            className={`p-6 hover:bg-slate-50 transition-all flex items-start gap-4 group cursor-pointer ${expandedId === log.id ? 'bg-slate-50/80 shadow-inner' : ''}`}
+                                            onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
+                                        >
+                                            <div className={`w-10 h-10 rounded-2xl ${styles.iconBg} border border-transparent flex items-center justify-center ${styles.iconColor} transition-all group-hover:scale-110`}>
+                                                <Clock size={20} />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-bold text-slate-800 group-hover:text-[#1500FF] transition-colors">{log.text}</p>
+                                                        {log.details && <span className="w-1.5 h-1.5 rounded-full bg-[#1500FF] animate-pulse" />}
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                                                            {formatRelativeTime(log.timestamp)}
+                                                        </span>
+                                                        <ChevronRight size={16} className={`text-slate-300 transition-transform duration-300 ${expandedId === log.id ? 'rotate-90 text-[#1500FF]' : ''}`} />
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-4">
+                                                    <span className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                                                        <User size={14} className="text-slate-300" />
+                                                        {log.user}
+                                                    </span>
+                                                    {log.product && (
+                                                        <span className="flex items-center gap-1.5 text-xs text-slate-500 font-medium bg-white px-2 py-0.5 rounded-lg border border-slate-100 shadow-sm">
+                                                            <Package size={14} className="text-slate-300" />
+                                                            <span className="uppercase">{log.product}</span>
+                                                        </span>
+                                                    )}
+                                                    <span className="text-[10px] text-slate-300 font-bold ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     </span>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-4">
-                                                <span className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                                                    <User size={14} className="text-slate-300" />
-                                                    {log.user}
-                                                </span>
-                                                {log.product && (
-                                                    <span className="flex items-center gap-1.5 text-xs text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-100">
-                                                        <Package size={14} className="text-slate-300" />
-                                                        <span className="uppercase">{log.product}</span>
-                                                    </span>
-                                                )}
-                                                <span className="text-[10px] text-slate-300 font-bold ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </motion.div>
+                                        </motion.div>
+
+                                        <AnimatePresence>
+                                            {expandedId === log.id && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                                                    className="overflow-hidden bg-white/50"
+                                                >
+                                                    <div className="px-20 pb-8 pt-2 space-y-6">
+                                                        {/* Time Detail Section */}
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                            <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-2">
+                                                                <div className="flex items-center gap-2 text-slate-400">
+                                                                    <Calendar size={14} />
+                                                                    <p className="text-[10px] font-black uppercase tracking-widest">Exact Date</p>
+                                                                </div>
+                                                                <p className="text-sm font-bold text-slate-700">
+                                                                    {new Date(log.timestamp).toLocaleDateString('id-ID', {
+                                                                        weekday: 'long',
+                                                                        year: 'numeric',
+                                                                        month: 'long',
+                                                                        day: 'numeric'
+                                                                    })}
+                                                                </p>
+                                                            </div>
+                                                            <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-2">
+                                                                <div className="flex items-center gap-2 text-slate-400">
+                                                                    <Clock size={14} />
+                                                                    <p className="text-[10px] font-black uppercase tracking-widest">Exact Time</p>
+                                                                </div>
+                                                                <p className="text-sm font-bold text-slate-700">
+                                                                    {new Date(log.timestamp).toLocaleTimeString('id-ID', {
+                                                                        hour: '2-digit',
+                                                                        minute: '2-digit',
+                                                                        second: '2-digit',
+                                                                        hour12: false
+                                                                    })} WIB
+                                                                </p>
+                                                            </div>
+                                                            <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-2">
+                                                                <div className="flex items-center gap-2 text-slate-400">
+                                                                    <ShieldCheck size={14} />
+                                                                    <p className="text-[10px] font-black uppercase tracking-widest">Action Type</p>
+                                                                </div>
+                                                                <p className="text-sm font-bold text-slate-700 uppercase tracking-tight">
+                                                                    {log.type || 'Standard Activity'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Description/Context Section */}
+                                                        <div className="p-6 bg-[#1500FF]/5 rounded-3xl border border-[#1500FF]/10 space-y-3">
+                                                            <div className="flex items-center gap-2 text-[#1500FF]">
+                                                                <Info size={16} />
+                                                                <h5 className="text-[11px] font-black uppercase tracking-widest">Detail Description</h5>
+                                                            </div>
+                                                            <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                                                                {log.details || `Sistem mencatat aktivitas "${log.text}" oleh ${log.user} untuk ${log.product || 'sistem'}.`}
+                                                            </p>
+                                                        </div>
+
+                                                        {/* System Metadata Tags */}
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <span className="px-3 py-1 bg-slate-100 rounded-full text-[10px] font-bold text-slate-500 border border-slate-200 uppercase tracking-tighter">Event ID: {log.id}</span>
+                                                            <span className="px-3 py-1 bg-slate-100 rounded-full text-[10px] font-bold text-slate-500 border border-slate-200 uppercase tracking-tighter">Priority: Medium</span>
+                                                            <span className="px-3 py-1 bg-slate-100 rounded-full text-[10px] font-bold text-slate-500 border border-slate-200 uppercase tracking-tighter">Source: Web UI</span>
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
                                 );
                             })}
                         </AnimatePresence>

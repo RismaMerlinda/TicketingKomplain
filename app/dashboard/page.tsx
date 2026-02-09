@@ -30,6 +30,7 @@ import {
     PieChart,
     Pie,
     Cell,
+    Legend,
 } from "recharts";
 import { motion } from "framer-motion";
 import { useState, useEffect, Suspense } from "react";
@@ -96,73 +97,88 @@ const itemVariants = {
 
 // Components
 
-function StatsCard({ title, value, icon, trend, trendUp }: StatsCardProps) {
+function StatsCard({ title, value, icon }: StatsCardProps) {
+    // Determine color based on title (quick heuristic for premium look)
+    const getThemeColor = () => {
+        const t = title.toLowerCase();
+        if (t.includes('total')) return { text: 'text-blue-600', bg: 'bg-blue-50', glow: 'group-hover:shadow-blue-500/10' };
+        if (t.includes('overdue')) return { text: 'text-slate-900', bg: 'bg-slate-100', glow: 'group-hover:shadow-slate-900/10' };
+        if (t.includes('new')) return { text: 'text-indigo-600', bg: 'bg-indigo-50', glow: 'group-hover:shadow-indigo-500/10' };
+        if (t.includes('progress')) return { text: 'text-amber-600', bg: 'bg-amber-50', glow: 'group-hover:shadow-amber-500/10' };
+        if (t.includes('done')) return { text: 'text-emerald-600', bg: 'bg-emerald-50', glow: 'group-hover:shadow-emerald-500/10' };
+        return { text: 'text-slate-400', bg: 'bg-slate-50', glow: 'group-hover:shadow-slate-400/10' };
+    };
+
+    const theme = getThemeColor();
+
     return (
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm group relative overflow-hidden">
-            {/* Subtle background shine */}
+        <div className={`bg-white rounded-2xl border border-slate-100 p-6 shadow-sm group relative overflow-hidden transition-all duration-500 hover:shadow-lg ${theme.glow} hover:-translate-y-1`}>
+            {/* Background Accent */}
+            <div className={`absolute -top-10 -right-10 w-24 h-24 rounded-full opacity-0 group-hover:opacity-10 transition-opacity duration-500 ${theme.bg}`} />
 
             <div className="flex items-start justify-between mb-6 relative z-10">
-                <div className="p-3.5 rounded-2xl bg-slate-50 text-slate-400 transition-all duration-300 shadow-sm border border-slate-100">
+                <div className={`p-3 rounded-xl ${theme.bg} ${theme.text} transition-all duration-500 shadow-sm border border-transparent group-hover:scale-110 group-hover:shadow-md`}>
                     {icon}
                 </div>
-                {trend && (
-                    <div className={`flex items-center text-[10px] font-bold px-2.5 py-1 rounded-full border ${trendUp ? "text-emerald-600 bg-emerald-50 border-emerald-100" : "text-rose-600 bg-rose-50 border-rose-100"}`}>
-                        {trendUp ? <TrendingUp size={12} className="mr-1.5" /> : <TrendingUp size={12} className="mr-1.5 rotate-180" />}
-                        {trend}
-                    </div>
-                )}
             </div>
+
             <div className="relative z-10">
-                <h3 className="text-4xl font-extrabold tracking-tighter text-slate-800 transition-all duration-300">
+                <h3 className="text-3xl font-black tracking-tight text-slate-800 transition-all duration-500">
                     {value}
                 </h3>
-                <p className="text-[11px] uppercase tracking-wider text-slate-400 font-bold mt-2">{title}</p>
+                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-400 font-extrabold mt-2 group-hover:text-slate-600 transition-colors">{title}</p>
             </div>
-        </div>
+        </div >
     );
 }
 
-function ProductStatCard({ id, name, total, active, url }: { id?: string, name: string, total: number, active: number, url?: string }) {
+function ProductStatCard({ id, name, total, active, url, icon }: { id?: string, name: string, total: number, active: number, url?: string, icon?: string }) {
     const router = useRouter();
     return (
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm group">
-            <div className="flex justify-between items-start mb-6">
+        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm group hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-500 overflow-hidden relative">
+            <div className="flex justify-between items-start mb-6 relative z-10">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 bg-slate-50 rounded-xl text-slate-400 transition-all duration-300 shadow-sm">
-                        <Package size={20} />
+                    <div className="w-12 h-12 bg-white rounded-xl text-slate-400 flex items-center justify-center transition-all duration-300 shadow-sm border border-slate-100 overflow-hidden group-hover:border-indigo-100 group-hover:shadow-indigo-100">
+                        {icon ? (
+                            <img src={icon} alt={name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                        ) : (
+                            <Package size={20} className="text-slate-300 group-hover:text-indigo-600 transition-colors" />
+                        )}
                     </div>
                     <div>
-                        <h4 className="font-bold text-base text-slate-800 transition-colors">{name}</h4>
-                        <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Software Product</p>
+                        <h4 className="font-black text-base text-slate-800 tracking-tight group-hover:text-indigo-600 transition-colors">{name}</h4>
+                        <p className="text-[9px] uppercase tracking-widest text-slate-400 font-extrabold mt-0.5">Software Product</p>
                     </div>
                 </div>
                 <button
                     onClick={() => router.push(`/dashboard/products?search=${encodeURIComponent(name)}`)}
-                    className="text-slate-300 hover:text-slate-600 transition-colors"
+                    className="p-1.5 text-slate-300 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-all"
                 >
                     <MoreHorizontal size={18} />
                 </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 my-6">
-                <div>
-                    <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Total Tickets</p>
-                    <p className="text-2xl font-extrabold text-slate-700">{total}</p>
+            <div className="grid grid-cols-2 gap-3 my-6 relative z-10">
+                <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-50 transition-all group-hover:bg-white group-hover:border-slate-100">
+                    <p className="text-[9px] uppercase tracking-[0.1em] text-slate-400 font-extrabold mb-0.5">Total</p>
+                    <p className="text-xl font-black text-slate-800">{total}</p>
                 </div>
-                <div>
-                    <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Active Issues</p>
-                    <p className="text-2xl font-extrabold text-[#1500FF]">{active}</p>
+                <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-50 transition-all group-hover:bg-white group-hover:border-slate-100">
+                    <p className="text-[9px] uppercase tracking-[0.1em] text-slate-400 font-extrabold mb-0.5">Active</p>
+                    <p className="text-xl font-black text-indigo-600">{active}</p>
                 </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-50">
-                <button
-                    onClick={() => router.push(url || `/dashboard?product=${id || name.toLowerCase().replace(/\s+/g, '-')}`)}
-                    className="w-full text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center justify-between transition-colors"
-                >
-                    View Dashboard <ArrowRight size={14} className="text-slate-400" />
-                </button>
-            </div>
+            <button
+                onClick={() => url && router.push(url)}
+                className="w-full flex items-center justify-between px-5 py-3 rounded-xl bg-[#1500FF] text-white font-bold text-xs shadow-lg shadow-blue-500/20 hover:bg-[#1500FF]/90 transition-all active:scale-[0.98] group/btn"
+            >
+                <span>View Product</span>
+                <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
+            </button>
+
+            {/* Decorative background element */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 rounded-full blur-2xl -mr-16 -mt-16 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
         </div>
     );
 }
@@ -234,14 +250,13 @@ function DashboardContent() {
         }
 
         if (dateFilterType === 'this_week') {
-            // Monday of this week
-            const day = start.getDay() || 7; // make Sun=7
-            if (day !== 1) start.setHours(-24 * (day - 1));
-            // End is today/end of week
+            const day = start.getDay() || 7;
+            if (day !== 1) start.setDate(start.getDate() - (day - 1));
         } else if (dateFilterType === 'last_week') {
             const day = start.getDay() || 7;
-            start.setDate(now.getDate() - day - 6 + 1); // Last Monday
-            end.setDate(now.getDate() - day); // Last Sunday
+            start.setDate(now.getDate() - day - 6);
+            end.setDate(now.getDate() - day);
+            end.setHours(23, 59, 59, 999);
         } else if (dateFilterType === 'this_month') {
             start.setDate(1);
         }
@@ -249,12 +264,14 @@ function DashboardContent() {
         return { start, end };
     };
 
-    // Helper to parse ticket dates safely
-    const parseDate = (str: string): Date => {
-        const today = new Date();
-        if (!str) return today;
-        const s = str.toLowerCase();
-        if (s.includes("min") || s.includes("hr") || s.includes("now")) return today;
+    // Helper to parse ticket dates safely (Handles MongoDB ISO and Custom formats)
+    const parseDate = (str: any): Date => {
+        if (!str) return new Date();
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) return d;
+
+        const s = String(str).toLowerCase();
+        if (s.includes("min") || s.includes("hr") || s.includes("now")) return new Date();
         if (s.includes("yesterday")) {
             const d = new Date(); d.setDate(d.getDate() - 1); return d;
         }
@@ -262,13 +279,15 @@ function DashboardContent() {
         if (daysMatch) {
             const d = new Date(); d.setDate(d.getDate() - parseInt(daysMatch[1])); return d;
         }
-        // Try parsing ISO/Standard first
-        const d = new Date(str);
-        if (!isNaN(d.getTime())) return d;
 
-        // Fallback for custom formats if needed
-        const d2 = new Date(str.split(" · ")[0]);
-        return isNaN(d2.getTime()) ? today : d2;
+        // Try parsing custom format "DD MMM YYYY · HH:mm"
+        const parts = String(str).split(" · ");
+        if (parts.length > 0) {
+            const d2 = new Date(parts[0]);
+            if (!isNaN(d2.getTime())) return d2;
+        }
+
+        return new Date();
     };
 
     const [realTickets, setRealTickets] = useState<any[]>([]);
@@ -353,15 +372,14 @@ function DashboardContent() {
     });
 
     const calcStats = {
-        total: dateFilteredTickets.length,
-        // Strict counts to match Ticket Tabs
-        new: dateFilteredTickets.filter((t: any) => t.status === 'New').length,
-        pending: dateFilteredTickets.filter((t: any) => t.status === 'Pending').length,
-        inProgress: dateFilteredTickets.filter((t: any) => t.status === 'In Progress').length,
-        overdue: dateFilteredTickets.filter((t: any) => t.status === 'Overdue').length,
-        closed: dateFilteredTickets.filter((t: any) => t.status === 'Closed').length,
-        // Done count for the success metric
-        resolvedGroup: dateFilteredTickets.filter((t: any) => t.status === 'Done').length,
+        // Global count for the cards to match Ticket Menu
+        total: currentViewTickets.length,
+        new: currentViewTickets.filter((t: any) => t.status === 'New').length,
+        pending: currentViewTickets.filter((t: any) => t.status === 'Pending').length,
+        inProgress: currentViewTickets.filter((t: any) => t.status === 'In Progress').length,
+        overdue: currentViewTickets.filter((t: any) => t.status === 'Overdue').length,
+        closed: currentViewTickets.filter((t: any) => t.status === 'Closed').length,
+        resolvedGroup: currentViewTickets.filter((t: any) => t.status === 'Done' || t.status === 'Resolved').length,
         satisfaction: productData?.stats?.satisfaction || "4.9/5.0"
     };
 
@@ -462,12 +480,31 @@ function DashboardContent() {
 
                 {/* 1. Key Metrics */}
                 <section>
-                    {(effectiveProductId || (user?.role === 'PRODUCT_ADMIN' && user?.productId)) && (
-                        <motion.div variants={itemVariants as any} className="mb-6 p-4 bg-[#1500FF]/5 border border-[#1500FF]/20 rounded-xl flex items-center gap-3 text-[#1500FF]">
-                            <Package size={20} />
-                            <span className="font-bold text-sm">Viewing Dashboard for Product: <span className="uppercase">{productData?.name || effectiveProductId}</span></span>
-                            {productIdParam && <button onClick={() => router.push('/dashboard')} className="ml-auto text-xs font-bold underline hover:no-underline">Back to Overview</button>}
-                        </motion.div>
+                    {effectiveProductId && (
+                        <div className="bg-sky-50 border border-sky-200 rounded-[2rem] p-6 flex flex-col md:flex-row items-center justify-between mb-10 shadow-sm gap-4 transition-all">
+                            <div className="flex items-center gap-5">
+                                <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center text-[#1500FF] shadow-md border border-sky-100 shrink-0">
+                                    <Package size={28} strokeWidth={2.5} />
+                                </div>
+                                <div className="space-y-0.5">
+                                    <div className="flex items-center gap-2">
+                                        <span className="px-2 py-0.5 bg-[#1500FF] text-white text-[9px] font-black uppercase tracking-widest rounded-md">Active View</span>
+                                        <p className="text-[10px] font-black uppercase tracking-wider text-sky-600/80">Product Statistics Filtered</p>
+                                    </div>
+                                    <p className="text-lg font-black text-slate-800 tracking-tight">
+                                        Viewing Dashboard for <span className="text-[#1500FF] underline decoration-blue-200 decoration-4 underline-offset-4">{productData?.name || effectiveProductId}</span>
+                                    </p>
+                                </div>
+                            </div>
+                            {productIdParam && (
+                                <button
+                                    onClick={() => router.push('/dashboard')}
+                                    className="bg-white px-8 py-3.5 rounded-2xl text-xs font-black text-slate-700 hover:text-white hover:bg-[#1500FF] border border-slate-200 hover:border-[#1500FF] transition-all shadow-sm active:scale-95 flex items-center gap-2"
+                                >
+                                    Back to Global Overview
+                                </button>
+                            )}
+                        </div>
                     )}
                     <motion.div variants={itemVariants as any} className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                         <div>
@@ -525,60 +562,100 @@ function DashboardContent() {
                     </motion.div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-                        <StatsCard title="Total Tickets" value={stats?.total ?? (filterRange === '30d' ? "2,543" : "432")} icon={<Ticket size={24} />} trend={filterRange === '30d' ? "+12%" : "+5%"} trendUp={true} />
-                        <StatsCard title="Overdue" value={stats?.overdue ?? "1"} icon={<AlertCircle size={24} className="text-slate-900" />} trend="Action Required" />
-                        <StatsCard title="New" value={stats?.new ?? "0"} icon={<Zap size={24} />} />
-                        <StatsCard title="In Progress" value={stats?.inProgress ?? "128"} icon={<Clock size={24} />} />
-                        <StatsCard title="Done" value={stats?.resolvedGroup ?? (filterRange === '30d' ? "2,312" : "380")} icon={<CheckCircle2 size={24} />} trend="+8%" trendUp={true} />
+                        <StatsCard title="Total Tickets" value={stats.total} icon={<Ticket size={24} />} trend={filterRange === '30d' ? "+12%" : "+5%"} trendUp={true} />
+                        <StatsCard title="Overdue" value={stats.overdue} icon={<AlertCircle size={24} className="text-slate-900" />} trend="Action Required" />
+                        <StatsCard title="New" value={stats.new} icon={<Zap size={24} />} />
+                        <StatsCard title="In Progress" value={stats.inProgress} icon={<Clock size={24} />} />
+                        <StatsCard title="Done" value={stats.resolvedGroup} icon={<CheckCircle2 size={24} />} trend="+8%" trendUp={true} />
                     </div>
                 </section>
 
                 {/* 2. Charts Section */}
-                <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     {/* Ticket Volume (Area Chart) */}
-                    <motion.div variants={itemVariants as any} className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 p-8 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] hover:shadow-md transition-shadow">
-                        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-8">
-                            <div>
-                                <h3 className="font-bold text-slate-800 text-lg">Ticket Volume & Performance</h3>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                    Incoming requests vs resolved
-                                </p>
-                            </div>
-
+                    <motion.div variants={itemVariants as any} className="lg:col-span-2 bg-white rounded-[2rem] border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-500">
+                        <div className="mb-4">
+                            <h3 className="font-black text-slate-800 text-lg tracking-tight">Ticket Volume & Performance</h3>
+                            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-1">
+                                Incoming requests vs resolved
+                            </p>
                         </div>
-                        <div className="h-[320px] w-full">
+                        <div className="h-[280px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={currentTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <AreaChart data={currentTrendData} margin={{ top: 10, right: 10, left: -25, bottom: 20 }}>
                                     <defs>
                                         <linearGradient id="colorTickets" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#1500FF" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="#1500FF" stopOpacity={0} />
+                                            <stop offset="5%" stopColor="#1500FF" stopOpacity={0.15} />
+                                            <stop offset="95%" stopColor="#1500FF" stopOpacity={0.01} />
                                         </linearGradient>
                                         <linearGradient id="colorResolved" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.15} />
+                                            <stop offset="95%" stopColor="#10B981" stopOpacity={0.01} />
                                         </linearGradient>
                                     </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" strokeOpacity={0.5} />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94A3B8', fontWeight: 600 }} dy={15} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94A3B8', fontWeight: 600 }} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#fff', borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px -5px rgba(0,0,0,0.1)', padding: '12px 16px' }}
-                                        labelStyle={{ fontWeight: '800', color: '#1E293B', marginBottom: '4px' }}
-                                        itemStyle={{ fontSize: '12px', fontWeight: 600, padding: 0 }}
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                                    <XAxis
+                                        dataKey="name"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fontSize: 12, fill: '#94A3B8', fontWeight: 600 }}
+                                        dy={12}
                                     />
-                                    <Area type="monotone" dataKey="tickets" stroke="#1500FF" strokeWidth={3} fillOpacity={1} fill="url(#colorTickets)" activeDot={{ r: 6, strokeWidth: 0, fill: '#1500FF' }} />
-                                    <Area type="monotone" dataKey="resolved" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorResolved)" activeDot={{ r: 6, strokeWidth: 0, fill: '#10B981' }} />
+                                    <YAxis
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fontSize: 12, fill: '#94A3B8', fontWeight: 600 }}
+                                        dx={-10}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{
+                                            backgroundColor: '#fff',
+                                            borderRadius: '16px',
+                                            border: 'none',
+                                            boxShadow: '0 10px 30px -5px rgba(0,0,0,0.1)',
+                                            padding: '12px 16px'
+                                        }}
+                                        labelStyle={{ fontWeight: '800', color: '#1E293B', marginBottom: '8px' }}
+                                        itemStyle={{ fontSize: '13px', fontWeight: 600, padding: '4px 0' }}
+                                        cursor={{ stroke: '#F1F5F9', strokeWidth: 2 }}
+                                    />
+                                    <Legend
+                                        verticalAlign="top"
+                                        align="right"
+                                        iconType="circle"
+                                        iconSize={8}
+                                        wrapperStyle={{ paddingBottom: '10px', paddingTop: '0px', fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.08em' }}
+                                    />
+                                    <Area
+                                        name="Incoming Tickets"
+                                        type="monotone"
+                                        dataKey="tickets"
+                                        stroke="#1500FF"
+                                        strokeWidth={4}
+                                        fillOpacity={1}
+                                        fill="url(#colorTickets)"
+                                        activeDot={{ r: 8, strokeWidth: 0, fill: '#1500FF' }}
+                                    />
+                                    <Area
+                                        name="Resolved Tickets"
+                                        type="monotone"
+                                        dataKey="resolved"
+                                        stroke="#10B981"
+                                        strokeWidth={4}
+                                        fillOpacity={1}
+                                        fill="url(#colorResolved)"
+                                        activeDot={{ r: 8, strokeWidth: 0, fill: '#10B981' }}
+                                    />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
                     </motion.div>
 
                     {/* Status Distribution (Pie Chart) */}
-                    <motion.div variants={itemVariants as any} className="bg-white rounded-2xl border border-slate-100 p-8 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] flex flex-col hover:shadow-md transition-shadow">
-                        <div className="mb-8">
-                            <h3 className="font-bold text-slate-800 text-lg">Status Distribution</h3>
-                            <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">Current breakdown</p>
+                    <motion.div variants={itemVariants as any} className="bg-white rounded-[2rem] border border-slate-100 p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] flex flex-col hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-500">
+                        <div className="mb-4">
+                            <h3 className="font-black text-slate-800 text-lg tracking-tight">Status Distribution</h3>
+                            <p className="text-[10px] font-extrabold text-slate-400 mt-1 uppercase tracking-widest">Real-time breakdown</p>
                         </div>
                         <div className="flex-1 min-h-[220px] w-full relative">
                             <ResponsiveContainer width="100%" height="100%">
@@ -587,11 +664,10 @@ function DashboardContent() {
                                         data={currentDistData}
                                         cx="50%"
                                         cy="50%"
-                                        innerRadius={70}
-                                        outerRadius={90}
-                                        paddingAngle={4}
+                                        innerRadius={55}
+                                        outerRadius={75}
+                                        paddingAngle={5}
                                         dataKey="value"
-                                        cornerRadius={8}
                                         stroke="none"
                                     >
                                         {currentDistData.map((entry: any, index: number) => (
@@ -609,7 +685,7 @@ function DashboardContent() {
                                 <span className="text-[10px] text-slate-400 uppercase tracking-widest font-extrabold">Total</span>
                             </div>
                         </div>
-                        <div className="mt-6 space-y-4">
+                        <div className="mt-2 space-y-3">
                             {currentDistData.map((item: any) => (
                                 <div key={item.name} className="flex items-center justify-between text-sm group cursor-default">
                                     <div className="flex items-center gap-3">
@@ -623,7 +699,7 @@ function DashboardContent() {
                     </motion.div>
                 </section>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
                     {/* 3. Product Overview (Main Content) */}
                     {/* 3. Product Overview (Main Content) */}
@@ -664,6 +740,7 @@ function DashboardContent() {
                                                 name={prod.name}
                                                 total={pTotal}
                                                 active={pActive}
+                                                icon={prod.icon}
                                                 // Default URL: Go to Specific Dashboard View
                                                 url={`/dashboard?product=${prod.id}`}
                                             />
@@ -677,6 +754,7 @@ function DashboardContent() {
                                     name={effectiveProductId && products[effectiveProductId] ? products[effectiveProductId].name : (user?.productId ? (products[user.productId]?.name || user.productId) : "My Product")}
                                     total={calcStats.total}
                                     active={calcStats.inProgress + calcStats.new + calcStats.pending + calcStats.overdue}
+                                    icon={effectiveProductId && products[effectiveProductId] ? products[effectiveProductId].icon : (user?.productId ? products[user.productId]?.icon : undefined)}
                                     // URL: Go to Tickets Page since we are already on Dashboard View
                                     url={`/dashboard/tickets?product=${effectiveProductId || user?.productId || ""}`}
                                 />

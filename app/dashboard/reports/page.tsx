@@ -27,7 +27,13 @@ import {
     Zap,
     ChevronDown,
     X,
-    Search
+    Search,
+    User,
+    Smartphone,
+    Mail,
+    Globe,
+    Tag,
+    ShieldAlert
 } from "lucide-react";
 import {
     BarChart,
@@ -57,6 +63,9 @@ interface ReportTicketData {
     priority: 'low' | 'medium' | 'high';
     responseTime: number; // in hours
     assignedTo: string;
+    source?: string;
+    solution?: string;
+    mongoId?: string;
 }
 
 
@@ -66,6 +75,7 @@ export default function ReportsPage() {
     const [dateRange, setDateRange] = useState<'7days' | '30days' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'custom' | 'all'>('all');
     const [mounted, setMounted] = useState(false);
     const [modalSearch, setModalSearch] = useState(""); // Search state for modal
+    const [selectedTicketDetail, setSelectedTicketDetail] = useState<ReportTicketData | null>(null);
     useEffect(() => setMounted(true), []);
     const [customStart, setCustomStart] = useState<string>('');
     const [customEnd, setCustomEnd] = useState<string>('');
@@ -75,6 +85,9 @@ export default function ReportsPage() {
     const [isAllTicketsModalOpen, setIsAllTicketsModalOpen] = useState(false); // Modal State
     const [tickets, setTickets] = useState<ReportTicketData[]>([]);
     const [products, setProducts] = useState<any[]>([]); // Dynamic Products
+    const [isEditingDetail, setIsEditingDetail] = useState(false);
+    const [editedDescription, setEditedDescription] = useState("");
+    const [editedSolution, setEditedSolution] = useState("");
 
 
     // Load Products
@@ -210,7 +223,10 @@ export default function ReportsPage() {
                     description: t.description || '',
                     priority: (t.priority?.toLowerCase() || 'medium') as any,
                     responseTime: Math.floor(Math.random() * 48) + 1, // Mock response time for now if not tracked
-                    assignedTo: usersMap[t.assignedTo] || t.assignedTo || 'Unassigned'
+                    assignedTo: usersMap[t.assignedTo] || t.assignedTo || 'Unassigned',
+                    source: t.source || 'Direct',
+                    solution: t.solution || '',
+                    mongoId: t._id || t.id
                 };
             });
             setTickets(mapped);
@@ -352,6 +368,44 @@ export default function ReportsPage() {
             (t.assignedTo && t.assignedTo.toLowerCase().includes(q))
         );
     }, [filteredData, modalSearch]);
+
+    const handleUpdateDetail = async () => {
+        if (!selectedTicketDetail) return;
+
+        try {
+            const ticketId = selectedTicketDetail.mongoId || selectedTicketDetail.id;
+            const res = await fetch(`http://127.0.0.1:5900/api/tickets/${ticketId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    description: editedDescription,
+                    solution: editedSolution
+                })
+            });
+
+            if (res.ok) {
+                // Update local state
+                const updatedTickets = tickets.map(t =>
+                    (t.mongoId === selectedTicketDetail.mongoId || t.id === selectedTicketDetail.id)
+                        ? { ...t, description: editedDescription, solution: editedSolution }
+                        : t
+                );
+                setTickets(updatedTickets);
+                setSelectedTicketDetail({
+                    ...selectedTicketDetail,
+                    description: editedDescription,
+                    solution: editedSolution
+                });
+                setIsEditingDetail(false);
+                // Dispatch event for other pages
+                window.dispatchEvent(new Event('ticketsUpdated'));
+            } else {
+                alert("Gagal memperbarui detail tiket.");
+            }
+        } catch (e) {
+            console.error("Error updating ticket detail:", e);
+        }
+    };
 
     // Data for charts
     const statusChartData = [
@@ -961,7 +1015,16 @@ export default function ReportsPage() {
                             </thead>
                             <tbody className="divide-y divide-slate-50">
                                 {filteredData.slice(0, 10).map((ticket, i) => (
-                                    <tr key={ticket.id} className="hover:bg-slate-50/80 transition-colors group">
+                                    <tr
+                                        key={`${ticket.id}-${i}`}
+                                        className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                                        onClick={() => {
+                                            setSelectedTicketDetail(ticket);
+                                            setEditedDescription(ticket.description || "");
+                                            setEditedSolution(ticket.solution || "");
+                                            setIsEditingDetail(false);
+                                        }}
+                                    >
                                         <td className="px-8 py-5 text-sm font-bold text-slate-700 group-hover:text-[#1500FF] transition-colors">
                                             #{ticket.id.toString().slice(-4)}
                                         </td>
@@ -1075,8 +1138,17 @@ export default function ReportsPage() {
                                             </thead>
                                             <tbody className="divide-y divide-slate-50">
                                                 {filteredModalTickets.length > 0 ? (
-                                                    filteredModalTickets.map((ticket, i) => (
-                                                        <tr key={ticket.id} className="hover:bg-slate-50/80 transition-colors group">
+                                                    filteredModalTickets.map((ticket, j) => (
+                                                        <tr
+                                                            key={`${ticket.id}-${j}`}
+                                                            className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                                                            onClick={() => {
+                                                                setSelectedTicketDetail(ticket);
+                                                                setEditedDescription(ticket.description || "");
+                                                                setEditedSolution(ticket.solution || "");
+                                                                setIsEditingDetail(false);
+                                                            }}
+                                                        >
                                                             <td className="px-8 py-5 text-sm font-bold text-slate-700 group-hover:text-[#1500FF] transition-colors">
                                                                 #{ticket.id.toString().slice(-4)}
                                                             </td>
@@ -1140,12 +1212,200 @@ export default function ReportsPage() {
                                     </div>
                                 </motion.div>
                             </div>
-                        )}
-                    </AnimatePresence>,
+                        )
+                        }
+                    </AnimatePresence >,
                     document.body
                 )}
 
-            </div>
-        </div>
+                {/* Ticket Detail Modal */}
+                {
+                    mounted && createPortal(
+                        <AnimatePresence>
+                            {selectedTicketDetail && (
+                                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+                                    <motion.div
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        onClick={() => setSelectedTicketDetail(null)}
+                                        className="absolute inset-0 bg-slate-900/40 backdrop-blur-md"
+                                    />
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95, y: 30 }}
+                                        className="relative bg-white w-full max-w-2xl max-h-[90vh] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden"
+                                    >
+                                        {/* Modal Header */}
+                                        <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex justify-between items-start">
+                                            <div>
+                                                <div className="flex items-center gap-3 mb-3">
+                                                    <span className="font-mono text-[10px] font-black tracking-widest text-[#1500FF] bg-white px-2.5 py-1 rounded-lg border border-blue-100 shadow-sm uppercase">#{selectedTicketDetail.id}</span>
+                                                    <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
+                                                        <Clock size={14} className="text-slate-300" />
+                                                        {new Date(selectedTicketDetail.date).toLocaleDateString('id-ID', {
+                                                            day: 'numeric', month: 'short', year: 'numeric'
+                                                        })}
+                                                    </span>
+                                                </div>
+                                                <h2 className="text-2xl font-black text-slate-800 leading-tight tracking-tight">{selectedTicketDetail.subject}</h2>
+                                            </div>
+                                            <button
+                                                onClick={() => setSelectedTicketDetail(null)}
+                                                className="p-2.5 bg-white hover:bg-slate-100 rounded-2xl border border-slate-100 shadow-sm transition-all text-slate-400 hover:text-slate-600 active:scale-95"
+                                            >
+                                                <X size={20} />
+                                            </button>
+                                        </div>
+
+                                        {/* Modal Content */}
+                                        <div className="p-8 overflow-y-auto space-y-8 flex-1">
+                                            {/* Status & Attributes */}
+                                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                                                <div className="space-y-1.5">
+                                                    <p className="text-[10px] uppercase font-black tracking-[0.1em] text-slate-400">Customer</p>
+                                                    <p className="font-bold text-slate-700 flex items-center gap-2">
+                                                        <User size={16} className="text-[#1500FF]" />
+                                                        {selectedTicketDetail.customer}
+                                                    </p>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <p className="text-[10px] uppercase font-black tracking-[0.1em] text-slate-400">Status</p>
+                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${selectedTicketDetail.status === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                        selectedTicketDetail.status === 'closed' ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                                                            selectedTicketDetail.status === 'overdue' ? 'bg-red-50 text-red-600 border-red-100' :
+                                                                selectedTicketDetail.status === 'in_progress' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                                                    selectedTicketDetail.status === 'new' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                        'bg-slate-50 text-slate-500 border-slate-200'
+                                                        }`}>
+                                                        {selectedTicketDetail.status.replace('_', ' ')}
+                                                    </span>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <p className="text-[10px] uppercase font-black tracking-[0.1em] text-slate-400">Priority</p>
+                                                    <p className="font-bold text-slate-700 flex items-center gap-2">
+                                                        <ShieldAlert size={16} className={selectedTicketDetail.priority === 'high' ? 'text-rose-500' : 'text-amber-500'} />
+                                                        {selectedTicketDetail.priority.toUpperCase()}
+                                                    </p>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <p className="text-[10px] uppercase font-black tracking-[0.1em] text-slate-400">Product</p>
+                                                    <p className="font-bold text-slate-700 flex items-center gap-2 uppercase tracking-tight">
+                                                        <Tag size={16} className="text-indigo-500" />
+                                                        {selectedTicketDetail.product}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Description */}
+                                            <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 shadow-sm transition-all hover:bg-white hover:shadow-md">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h4 className="text-[10px] uppercase font-black tracking-[0.14em] text-slate-400 flex items-center gap-2">
+                                                        <Activity size={14} className="text-[#1500FF]" />
+                                                        Issue Description
+                                                    </h4>
+                                                    {user?.role === 'SUPER_ADMIN' && !isEditingDetail && (
+                                                        <button
+                                                            onClick={() => setIsEditingDetail(true)}
+                                                            className="text-[10px] font-bold text-[#1500FF] hover:underline"
+                                                        >
+                                                            Edit Detail
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {isEditingDetail ? (
+                                                    <textarea
+                                                        value={editedDescription}
+                                                        onChange={(e) => setEditedDescription(e.target.value)}
+                                                        className="w-full h-32 p-4 bg-white border border-blue-200 rounded-2xl text-sm font-medium text-slate-700 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
+                                                        placeholder="Describe the issue..."
+                                                    />
+                                                ) : (
+                                                    <p className="text-slate-700 leading-relaxed text-sm font-medium">
+                                                        {selectedTicketDetail.description || "No detailed description provided."}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            {/* Solution Section */}
+                                            <div className={`p-6 rounded-3xl border shadow-sm transition-all ${isEditingDetail ? 'bg-white border-blue-200 ring-4 ring-blue-50' : (selectedTicketDetail.solution ? 'bg-emerald-50/30 border-emerald-100' : 'bg-slate-50 border-slate-100')}`}>
+                                                <h4 className={`text-[10px] uppercase font-black tracking-[0.14em] mb-4 flex items-center gap-2 ${selectedTicketDetail.solution && !isEditingDetail ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                    <CheckCircle2 size={14} />
+                                                    Official Solution
+                                                </h4>
+                                                {isEditingDetail ? (
+                                                    <textarea
+                                                        value={editedSolution}
+                                                        onChange={(e) => setEditedSolution(e.target.value)}
+                                                        className="w-full h-32 p-4 bg-white border border-blue-200 rounded-2xl text-sm font-medium text-slate-700 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
+                                                        placeholder="Enter final solution/resolution..."
+                                                    />
+                                                ) : (
+                                                    <p className={`text-sm leading-relaxed ${selectedTicketDetail.solution ? 'text-slate-700 font-bold' : 'text-slate-400 italic font-medium'}`}>
+                                                        {selectedTicketDetail.solution || "This ticket has not been resolved yet."}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            {/* Meta Data */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                                                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-[#1500FF]">
+                                                        <User size={18} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-black uppercase text-slate-400">Assigned Agent</p>
+                                                        <p className="text-sm font-bold text-slate-700">{selectedTicketDetail.assignedTo}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                                                    <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500">
+                                                        <Smartphone size={18} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-black uppercase text-slate-400">Support Source</p>
+                                                        <p className="text-sm font-bold text-slate-700 uppercase">{selectedTicketDetail.source}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Modal Footer */}
+                                        <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+                                            {isEditingDetail ? (
+                                                <>
+                                                    <button
+                                                        onClick={() => setIsEditingDetail(false)}
+                                                        className="bg-white px-6 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-all active:scale-95"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        onClick={handleUpdateDetail}
+                                                        className="bg-[#1500FF] px-8 py-3 rounded-2xl text-xs font-black text-white hover:bg-slate-900 transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center gap-2"
+                                                    >
+                                                        Save Changes
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setSelectedTicketDetail(null)}
+                                                    className="bg-white px-8 py-3 rounded-2xl border border-slate-200 text-xs font-black text-slate-600 hover:text-[#1500FF] hover:bg-blue-50 transition-all shadow-sm active:scale-95"
+                                                >
+                                                    Close Detail
+                                                </button>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                </div>
+                            )}
+                        </AnimatePresence>,
+                        document.body
+                    )
+                }
+
+            </div >
+        </div >
     );
 }

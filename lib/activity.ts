@@ -7,6 +7,8 @@ export interface ActivityLog {
     time: string; // Keep for legacy but we'll use timestamp mostly
     product: string | null;
     timestamp: number;
+    details?: string;
+    type?: 'create' | 'update' | 'delete' | 'status' | 'system';
 }
 
 export const formatRelativeTime = (timestamp: number): string => {
@@ -34,7 +36,7 @@ export const getStoredLogs = (): ActivityLog[] => {
     return stored ? JSON.parse(stored) : [];
 };
 
-export const logActivity = (text: string, userName: string, productId: string | null = null) => {
+export const logActivity = (text: string, userName: string, productId: string | null = null, details?: string, type?: ActivityLog['type']) => {
     if (typeof window === 'undefined') return;
 
     const logs = getStoredLogs();
@@ -44,7 +46,9 @@ export const logActivity = (text: string, userName: string, productId: string | 
         user: userName,
         time: "Just now",
         product: productId,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        details,
+        type
     };
 
     const updatedLogs = [newLog, ...logs].slice(0, 100);

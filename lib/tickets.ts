@@ -22,6 +22,7 @@ export interface TicketData {
     startTime?: string;
     endDate?: string;
     endTime?: string;
+    solution?: string;
 }
 
 const STORAGE_KEY = 'ticketing_tickets';
@@ -232,7 +233,8 @@ export const getStoredTickets = async (): Promise<TicketData[]> => {
                 startDate: t.startDate,
                 startTime: t.startTime,
                 endDate: t.endDate,
-                endTime: t.endTime
+                endTime: t.endTime,
+                solution: t.solution || ""
             };
         });
     } catch (e) {
