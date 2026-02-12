@@ -138,10 +138,10 @@ export default function ReportsPage() {
                 if (res.ok && contentType && contentType.includes("application/json")) {
                     rawTickets = await res.json();
                 } else {
-                    console.error("Failed to fetch tickets from API or invalid format");
+                    console.warn(`Failed to fetch tickets from API: ${res.status} ${res.statusText}`);
                 }
             } catch (e) {
-                console.error("API Error", e);
+                console.warn("API unavailable, using fallback data", e);
             }
 
             // 2. Migration Check: If API empty but LocalStorage has data -> Sync!
@@ -409,13 +409,13 @@ export default function ReportsPage() {
 
     // Data for charts
     const statusChartData = [
-        { name: 'New', value: stats.new, color: '#3B82F6' },
-        { name: 'In Progress', value: stats.inProgress, color: '#F59E0B' },
-        { name: 'Pending', value: stats.pending, color: '#64748B' },
-        { name: 'Overdue', value: stats.overdue, color: '#EF4444' },
-        { name: 'Done', value: stats.done, color: '#10B981' },
-        { name: 'Closed', value: stats.closed, color: '#1F2937' },
-    ].filter(item => item.value > 0);
+        { name: 'New', value: stats.new, color: '#3B82F6' },       // Biru
+        { name: 'In Progress', value: stats.inProgress, color: '#F97316' }, // Oren
+        { name: 'Pending', value: stats.pending, color: '#9CA3AF' },   // Abu-abu
+        { name: 'Done', value: stats.done, color: '#22C55E' },      // Ijo
+        { name: 'Overdue', value: stats.overdue, color: '#000000' },   // Item
+        { name: 'Closed', value: stats.closed, color: '#854D0E' },    // Coklat (using a brown hex)
+    ];
 
     const productChartData = useMemo(() => {
         let productList = [];
@@ -913,11 +913,11 @@ export default function ReportsPage() {
                                 />
                                 <Legend verticalAlign="bottom" height={36} iconType="circle" />
                                 <Bar dataKey="new" stackId="a" fill="#3B82F6" name="New" radius={[0, 0, 4, 4]} />
-                                <Bar dataKey="inProgress" stackId="a" fill="#F59E0B" name="In Progress" />
-                                <Bar dataKey="pending" stackId="a" fill="#64748B" name="Pending" />
-                                <Bar dataKey="overdue" stackId="a" fill="#EF4444" name="Overdue" />
-                                <Bar dataKey="done" stackId="a" fill="#10B981" name="Done" />
-                                <Bar dataKey="closed" stackId="a" fill="#1F2937" name="Closed" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="inProgress" stackId="a" fill="#F97316" name="In Progress" />
+                                <Bar dataKey="pending" stackId="a" fill="#9CA3AF" name="Pending" />
+                                <Bar dataKey="done" stackId="a" fill="#22C55E" name="Done" />
+                                <Bar dataKey="overdue" stackId="a" fill="#000000" name="Overdue" />
+                                <Bar dataKey="closed" stackId="a" fill="#854D0E" name="Closed" radius={[4, 4, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -1038,12 +1038,12 @@ export default function ReportsPage() {
                                             <div className="text-xs text-slate-500 mt-1">{ticket.customer}</div>
                                         </td>
                                         <td className="px-8 py-5">
-                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold capitalize border ${ticket.status === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                ticket.status === 'closed' ? 'bg-slate-100 text-slate-600 border-slate-200' :
-                                                    ticket.status === 'overdue' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                        ticket.status === 'in_progress' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                                                            ticket.status === 'new' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                                'bg-slate-50 text-slate-500 border-slate-200' // Pending
+                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold capitalize border ${ticket.status === 'done' ? 'bg-green-50 text-green-600 border-green-100' :
+                                                    ticket.status === 'closed' ? 'bg-[#fdf8f6] text-[#854D0E] border-[#854D0E]/20' :
+                                                        ticket.status === 'overdue' ? 'bg-black text-white border-black' :
+                                                            ticket.status === 'in_progress' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                                                ticket.status === 'new' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                    'bg-gray-100 text-gray-500 border-gray-200'
                                                 }`}>
                                                 {ticket.status === 'done' || ticket.status === 'closed' ? <CheckCircle2 size={12} /> :
                                                     ticket.status === 'overdue' ? <AlertCircle size={12} /> :
@@ -1163,11 +1163,11 @@ export default function ReportsPage() {
                                                             </td>
                                                             <td className="px-8 py-5">
                                                                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold capitalize border ${ticket.status === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                                    ticket.status === 'closed' ? 'bg-slate-100 text-slate-600 border-slate-200' :
-                                                                        ticket.status === 'overdue' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                                            ticket.status === 'in_progress' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                                                                                ticket.status === 'new' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                                                    'bg-slate-50 text-slate-500 border-slate-200' // Pending
+                                                                        ticket.status === 'closed' ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                                                                            ticket.status === 'overdue' ? 'bg-red-50 text-red-600 border-red-100' :
+                                                                                ticket.status === 'in_progress' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                                                                    ticket.status === 'new' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                                        'bg-slate-50 text-slate-500 border-slate-200' // Pending
                                                                     }`}>
                                                                     {ticket.status === 'done' || ticket.status === 'closed' ? <CheckCircle2 size={12} /> :
                                                                         ticket.status === 'overdue' ? <AlertCircle size={12} /> :
@@ -1272,12 +1272,12 @@ export default function ReportsPage() {
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     <p className="text-[10px] uppercase font-black tracking-[0.1em] text-slate-400">Status</p>
-                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${selectedTicketDetail.status === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                        selectedTicketDetail.status === 'closed' ? 'bg-slate-100 text-slate-600 border-slate-200' :
-                                                            selectedTicketDetail.status === 'overdue' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                                selectedTicketDetail.status === 'in_progress' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                                                                    selectedTicketDetail.status === 'new' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                                        'bg-slate-50 text-slate-500 border-slate-200'
+                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${selectedTicketDetail.status === 'done' ? 'bg-green-50 text-green-600 border-green-100' :
+                                                            selectedTicketDetail.status === 'closed' ? 'bg-[#fdf8f6] text-[#854D0E] border-[#854D0E]/20' :
+                                                                selectedTicketDetail.status === 'overdue' ? 'bg-black text-white border-black' :
+                                                                    selectedTicketDetail.status === 'in_progress' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                                                        selectedTicketDetail.status === 'new' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                            'bg-gray-100 text-gray-500 border-gray-200'
                                                         }`}>
                                                         {selectedTicketDetail.status.replace('_', ' ')}
                                                     </span>

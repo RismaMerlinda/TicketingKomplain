@@ -21,7 +21,7 @@ export interface User {
 interface AuthContextType {
     user: User | null;
     isLoading: boolean;
-    login: (email: string, password: string) => Promise<boolean>;
+    login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
     logout: () => void;
     updatePassword: (oldPassword: string, newPassword: string) => Promise<{ success: boolean, message: string }>;
     updateUser: (updates: Partial<User>) => Promise<void>;
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
-    const login = async (email: string, password: string): Promise<boolean> => {
+    const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
         try {
             const cleanEmail = String(email).trim();
             const response = await fetch(`${API_URL}/auth/login`, {
@@ -95,20 +95,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
 
             if (!response.ok) {
+                let errorMessage = "Login failed";
                 try {
                     const errorData = await response.json();
-                    console.error("Login failed:", errorData.message || response.statusText);
+                    errorMessage = errorData.message || response.statusText;
+                    // Use warn for expected auth failures (401, 403) to avoid cluttering console with "errors"
+                    if (response.status >= 400 && response.status < 500) {
+                        console.warn("Login attempt failed:", errorMessage);
+                    } else {
+                        console.error("Login error:", errorMessage);
+                    }
                 } catch {
                     console.error("Login failed with status:", response.status);
+                    errorMessage = `Login failed with status: ${response.status}`;
                 }
-                return false;
+                return { success: false, message: errorMessage };
             }
 
             const contentType = response.headers.get("content-type");
             if (!contentType || !contentType.includes("application/json")) {
                 const text = await response.text();
                 console.error("Expected JSON but got:", text.substring(0, 100));
-                return false;
+                return { success: false, message: "Invalid server response format" };
             }
 
             const data = await response.json();
@@ -124,13 +132,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 localStorage.setItem("ticketing_user", JSON.stringify(newUser));
                 setUser(newUser);
                 router.push("/dashboard");
-                return true;
+                return { success: true };
             } else {
-                return false;
+                return { success: false, message: "Invalid server response" };
             }
         } catch (error) {
             console.error("Login error:", error);
-            return false;
+            return { success: false, message: "Terjadi kesalahan koneksi" };
         }
     };
 

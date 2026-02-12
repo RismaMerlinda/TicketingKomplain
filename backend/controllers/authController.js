@@ -37,6 +37,10 @@ const DEFAULT_USERS = [
 ];
 
 // Login endpoint
+const fs = require('fs');
+const path = require('path');
+
+// Login endpoint
 exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -50,8 +54,16 @@ exports.login = async (req, res) => {
         }
 
         // Cari user berdasarkan email (Case-Insensitive)
-        const normalizedEmail = String(email).toLowerCase();
-        let user = await User.findOne({ email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') } });
+        const normalizedEmail = String(email).trim().toLowerCase();
+
+        // Coba cari direct match dulu (best performance)
+        let user = await User.findOne({ email: normalizedEmail });
+
+        // Jika tidak ketemu, coba cari case-insensitive via regex (escaped)
+        if (!user) {
+            const escapedEmail = normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            user = await User.findOne({ email: { $regex: new RegExp(`^${escapedEmail}$`, 'i') } });
+        }
 
         // Jika user tidak ada di DB, cek apakah ini user default yang perlu di-auto-save
         if (!user) {
@@ -59,26 +71,44 @@ exports.login = async (req, res) => {
 
             if (defaultUser && defaultUser.password === password) {
                 // Buat user baru di DB dari data default
-                user = new User(defaultUser);
-                await user.save();
-                console.log(`✨ Auto-created default user in DB: ${normalizedEmail}`);
+                try {
+                    user = new User(defaultUser);
+                    await user.save();
+                    console.log(`✨ Auto-created default user in DB: ${normalizedEmail}`);
+                } catch (saveErr) {
+                    console.error('Auto-save user error:', saveErr.message);
+                    user = await User.findOne({ email: normalizedEmail });
+                    if (!user) throw saveErr;
+                }
             } else {
+                // Log failed attempt (user not found)
+                const logMsg = `[${new Date().toISOString()}] FAILED - User not found or default password mismatch. Email: '${email}', Password: '${password}'\n`;
+                fs.appendFileSync(path.join(__dirname, '../login_debug.log'), logMsg);
+
                 return res.status(401).json({
                     success: false,
-                    message: "Email atau password salah"
+                    message: "Email tidak terdaftar"
                 });
             }
         } else {
             // Cek password (plain text comparison - in production use bcrypt)
             if (user.password !== password) {
+                // Log failed attempt (password mismatch)
+                const logMsg = `[${new Date().toISOString()}] FAILED - Password mismatch. Email: '${user.email}', DB Password: '${user.password}', Input Password: '${password}'\n`;
+                fs.appendFileSync(path.join(__dirname, '../login_debug.log'), logMsg);
+
                 return res.status(401).json({
                     success: false,
-                    message: "Email atau password salah"
+                    message: "Password salah (Cek caps lock atau spasi)"
                 });
             }
         }
 
         // Login berhasil
+        // Clear log on successful login to indicate success? Or just leave it.
+        const logMsg = `[${new Date().toISOString()}] SUCCESS - Login successful for ${user.email}\n`;
+        fs.appendFileSync(path.join(__dirname, '../login_debug.log'), logMsg);
+
         res.json({
             success: true,
             message: "Login berhasil",
@@ -93,10 +123,10 @@ exports.login = async (req, res) => {
         });
 
     } catch (err) {
-        console.error('Login error:', err);
+        console.error('Login error details:', err);
         res.status(500).json({
             success: false,
-            message: "Terjadi kesalahan server"
+            message: `Terjadi kesalahan server: ${err.message}`
         });
     }
 };

@@ -646,29 +646,29 @@ export default function TicketsPage() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="max-w-[1600px] mx-auto px-4 md:px-8 pt-6 space-y-1"
+                className="max-w-[1600px] mx-auto px-5 md:px-8 pt-6 space-y-1"
             >
                 {/* Active Product Filter Banner */}
                 {productFilter && (
                     <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-blue-50 border border-blue-100 rounded-3xl p-5 flex items-center justify-between mb-4 shadow-sm"
+                        className="bg-blue-50 border border-blue-100 rounded-3xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between mb-4 shadow-sm gap-4"
                     >
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-[#1500FF] shadow-sm border border-blue-100">
+                        <div className="flex items-center gap-4 w-full md:w-auto">
+                            <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-[#1500FF] shadow-sm border border-blue-100 shrink-0">
                                 <Filter size={20} strokeWidth={2.5} />
                             </div>
-                            <div>
+                            <div className="min-w-0 flex-1">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-[#1500FF]/60 mb-0.5">Active Ticket Filter</p>
-                                <p className="text-base font-bold text-slate-800">
+                                <p className="text-base font-bold text-slate-800 truncate">
                                     Showing tickets for <span className="text-[#1500FF] uppercase">{Object.values(products).find(p => p.id === productFilter)?.name || productFilter}</span>
                                 </p>
                             </div>
                         </div>
                         <button
                             onClick={clearProductFilter}
-                            className="bg-white px-6 py-3 rounded-2xl text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition-all shadow-sm active:scale-95"
+                            className="w-full md:w-auto bg-white px-6 py-3 rounded-2xl text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition-all shadow-sm active:scale-95"
                         >
                             Clear Filter
                         </button>
@@ -676,35 +676,36 @@ export default function TicketsPage() {
                 )}
 
                 {/* 1. Controls Row */}
-                <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-6">
-                    <div className="relative w-full md:max-w-md group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#1500FF] transition-colors" size={20} />
+                <div className="flex flex-col md:flex-row gap-3 items-center justify-between mb-5">
+                    <div className="relative w-full md:max-w-xs group order-1 md:order-none">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#1500FF] transition-colors" size={18} />
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Find tickets by ID, title, or customer..."
-                            className="w-full pl-12 pr-4 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-[#1500FF]/10 focus:border-[#1500FF] transition-all text-slate-800 font-medium placeholder:text-slate-400"
+                            placeholder="Find tickets..."
+                            className="w-full h-10 pl-10 pr-4 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1500FF]/20 focus:border-[#1500FF] transition-all text-sm font-bold text-slate-700 placeholder:text-slate-400 shadow-sm"
                         />
                     </div>
-                    <div className="flex items-center gap-3 w-full md:w-auto">
-                        <div className="hidden md:flex bg-white p-1 rounded-2xl border border-slate-200">
+
+                    <div className="flex items-center gap-2 w-full md:w-auto order-2 md:order-none h-10">
+                        <div className="flex bg-white rounded-xl border border-slate-200 shrink-0 shadow-sm h-full items-center overflow-hidden divide-x divide-slate-100">
                             <ViewToggle mode="GRID" current={viewMode} onClick={setViewMode} />
                             <ViewToggle mode="LIST" current={viewMode} onClick={setViewMode} />
                             <ViewToggle mode="TABLE" current={viewMode} onClick={setViewMode} />
                         </div>
                         <button
                             onClick={() => setIsAddModalOpen(true)}
-                            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-4 bg-[#1500FF] text-white rounded-2xl text-sm font-bold hover:bg-slate-900 transition-all duration-300 whitespace-nowrap active:scale-[0.98]"
+                            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 h-full bg-[#1500FF] text-white rounded-xl text-xs font-bold hover:bg-slate-900 transition-all duration-300 active:scale-[0.98] shadow-sm"
                         >
-                            <Plus size={20} />
-                            Create Ticket
+                            <Plus size={18} />
+                            <span>Create Ticket</span>
                         </button>
                     </div>
                 </div>
 
-                {/* 2. Filters Row - Shifted right for better precision */}
-                <div className="flex items-center gap-3 overflow-x-auto pt-2 pb-3 scrollbar-hide pl-8 md:pl-0">
+                {/* 2. Filters Row */}
+                <div className="flex items-center gap-3 overflow-x-auto pt-1 pb-4 scrollbar-hide w-full">
                     <FilterTab label="All Tickets" isActive={activeTab === "All"} onClick={() => handleTabChange("All")} count={roleFilteredTickets.length} />
                     {(["New", "In Progress", "Pending", "Overdue", "Done", "Closed"] as TicketStatus[]).map(s => (
                         <FilterTab key={s} label={s} isActive={activeTab === s} onClick={() => handleTabChange(s)} count={roleFilteredTickets.filter(t => t.status === s).length} />

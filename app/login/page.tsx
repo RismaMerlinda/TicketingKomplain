@@ -22,12 +22,14 @@ export default function LoginPage() {
     const router = useRouter(); // Keep for now in case
     const [showPassword, setShowPassword] = useState(false);
     const [formData, setFormData] = useState({ email: "", password: "" });
+    const [errorMsg, setErrorMsg] = useState("");
     const [showLoginError, setShowLoginError] = useState(false);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        const success = await login(formData.email, formData.password);
-        if (!success) {
+        const result = await login(formData.email, formData.password);
+        if (!result.success) {
+            setErrorMsg(result.message || "Login failed");
             setShowLoginError(true);
         }
     };
@@ -138,7 +140,7 @@ export default function LoginPage() {
                 onClose={() => setShowLoginError(false)}
                 onConfirm={() => setShowLoginError(false)}
                 title="Login Failed"
-                message="The email or password you entered is incorrect. Please check your credentials and try again."
+                message={errorMsg}
                 confirmText="Try Again"
                 variant="warning"
             />

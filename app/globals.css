@@ -44,8 +44,10 @@
   --color-app-text-sub: var(--pk-text-secondary);
   --color-app-text-mute: var(--pk-text-muted);
 
-  --font-inter: var(--font-sans);
-  --font-jetbrains: var(--font-mono);
+  /* Correctly map Tailwind's font-sans to our Inter variable */
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-inter);
+  /* Force mono to use Inter too (with tabular nums) */
 
   /* Friend's theme additions */
   --color-background: var(--background);
@@ -68,8 +70,25 @@ body {
 
   color: var(--pk-bg-outer);
   font-family: var(--font-sans), sans-serif;
+
+  /* Beautify Font Rendering */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv05", "cv08", "cv11", "ss01";
+  font-variant-numeric: tabular-nums;
+  /* Ensure numbers align nicely like monospace */
+}
+
+/* Typography Enhancements */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  letter-spacing: -0.025em;
+  /* tracking-tight for premium feel */
 }
 
 /* Utilities */

@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local agent and tools
+.agent/
+.gemini/
+
+# backend logs and temp files
+backend/*.log
+backend/server_pid.txt
+backend/users_dump.json
+
+# database
+data/
+

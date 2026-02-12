@@ -14,8 +14,11 @@ if exist .next (
 echo Waiting...
 timeout /t 1 /nobreak >nul
 
-echo Starting Backend Server...
-start "Backend Server" /D "backend" npm run dev
+
+
+echo Starting MongoDB...
+if not exist "data\db" mkdir "data\db"
+start "MongoDB" /MIN "C:\Program Files\MongoDB\Server\8.2\bin\mongod.exe" --dbpath "data\db" --bind_ip 127.0.0.1
 
 echo Starting Next.js development server...
 npm run dev

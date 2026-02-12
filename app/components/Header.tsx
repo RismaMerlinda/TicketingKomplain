@@ -231,19 +231,19 @@ export default function Header({ title = "Overview", subtitle = "Operations Cont
                         <Menu size={24} />
                     </button>
 
-                    <div className="flex flex-col justify-center">
-                        <h1 className="text-xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                    <div className="flex flex-col justify-center min-w-0">
+                        <h1 className="text-xl font-bold text-slate-800 tracking-tight flex items-center gap-2 truncate">
                             {title}
                         </h1>
-                        <p className="text-xs font-medium text-slate-500 mt-0.5 flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#1500FF]" />
+                        <p className="text-xs font-medium text-slate-500 mt-0.5 flex items-center gap-2 truncate">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#1500FF] shrink-0" />
                             {subtitle}
                         </p>
                     </div>
                 </div>
 
                 {/* Right: Actions */}
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-6 shrink-0">
 
                     {/* Modern Global Search */}
                     {!hideSearch && pathname === '/dashboard' && (
