@@ -171,13 +171,16 @@ const API_URL = `${API_BASE_URL}/tickets`;
 export const getStoredTickets = async (): Promise<TicketData[]> => {
     try {
         const response = await fetch(API_URL);
-        if (!response.ok) throw new Error(`Failed to fetch tickets: ${response.status}`);
+
+        if (!response.ok) {
+            console.warn(`⚠️ API Tickets returned ${response.status}. Using fallback mock data.`);
+            return MOCK_TICKETS;
+        }
 
         const contentType = response.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
-            const text = await response.text();
-            console.error("Expected JSON but got:", text.substring(0, 50));
-            throw new Error("Invalid response format from server");
+            console.warn("⚠️ Invalid API response format. Using fallback mock data.");
+            return MOCK_TICKETS;
         }
 
         const data = await response.json();

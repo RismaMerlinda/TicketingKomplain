@@ -18,6 +18,7 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Increase API data limit incase sync is large
 
 // Database Connection
+mongoose.set('bufferCommands', true); // Re-enable buffering to allow operations while connecting
 mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log('✅ Connected to MongoDB'))
     .catch(err => console.error('❌ MongoDB Connection Error:', err));
