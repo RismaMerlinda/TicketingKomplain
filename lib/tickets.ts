@@ -161,7 +161,9 @@ export const MOCK_TICKETS: TicketData[] = [
 ];
 
 
-const API_URL = 'http://127.0.0.1:5900/api/tickets';
+import { API_BASE_URL } from './api-config';
+
+const API_URL = `${API_BASE_URL}/tickets`;
 
 /**
  * Fetch all tickets from MongoDB via API

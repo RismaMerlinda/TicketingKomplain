@@ -2,9 +2,8 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { API_BASE_URL as API_URL } from "@/lib/api-config";
 
-// Menggunakan 127.0.0.1 untuk menghindari issue localhost resolution di beberapa sistem Windows
-const API_URL = "http://127.0.0.1:5900/api";
 
 export type UserRole = "SUPER_ADMIN" | "PRODUCT_ADMIN";
 

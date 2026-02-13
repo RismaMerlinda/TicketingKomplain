@@ -9,6 +9,7 @@ import { ROLES, getStoredUsers } from "@/lib/auth";
 import ConfirmModal from "@/app/components/ConfirmModal";
 import { useAuth } from "../../context/AuthContext";
 import { logActivity } from "@/lib/activity";
+import { API_BASE_URL } from "@/lib/api-config";
 
 export default function AdminsPage() {
     const [users, setUsers] = useState<any[]>([]);
@@ -48,7 +49,7 @@ export default function AdminsPage() {
                 setProducts(productsMap);
 
                 // 2. Fetch Users
-                const userRes = await fetch('http://127.0.0.1:5900/api/users', { cache: 'no-store' });
+                const userRes = await fetch(`${API_BASE_URL}/users`, { cache: 'no-store' });
                 const userContentType = userRes.headers.get("content-type");
                 if (userRes.ok && userContentType && userContentType.includes("application/json")) {
                     let userData = await userRes.json();
@@ -78,7 +79,7 @@ export default function AdminsPage() {
                     if (newAdminsToCreate.length > 0) {
                         console.log(`🔄 Syncing ${newAdminsToCreate.length} missing admins...`);
                         await Promise.all(newAdminsToCreate.map(newUser =>
-                            fetch('http://127.0.0.1:5900/api/users', {
+                            fetch(`${API_BASE_URL}/users`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(newUser)
@@ -86,7 +87,7 @@ export default function AdminsPage() {
                         ));
 
                         // Refetch users after sync
-                        const reFetch = await fetch('http://127.0.0.1:5900/api/users');
+                        const reFetch = await fetch(`${API_BASE_URL}/users`);
                         if (reFetch.ok) {
                             userData = await reFetch.json();
                         }
@@ -102,7 +103,7 @@ export default function AdminsPage() {
                             role: ROLES.SUPER_ADMIN,
                             productId: null
                         };
-                        await fetch('http://127.0.0.1:5900/api/users', {
+                        await fetch(`${API_BASE_URL}/users`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(superAdmin)
@@ -144,7 +145,7 @@ export default function AdminsPage() {
                 // However, our API delete logic uses findById. 
                 // Let's assume editingUser has _id if it came from API.
 
-                const res = await fetch(`http://127.0.0.1:5900/api/users/${editingUser._id}`, {
+                const res = await fetch(`${API_BASE_URL}/users/${editingUser._id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -155,7 +156,7 @@ export default function AdminsPage() {
                 setUsers(prev => prev.map(u => u._id === updated._id ? updated : u));
             } else {
                 // Add New
-                const res = await fetch('http://127.0.0.1:5900/api/users', {
+                const res = await fetch(`${API_BASE_URL}/users`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -200,7 +201,7 @@ export default function AdminsPage() {
         if (!userToDelete) return;
 
         try {
-            const res = await fetch(`http://127.0.0.1:5900/api/users/${userToDelete._id}`, {
+            const res = await fetch(`${API_BASE_URL}/users/${userToDelete._id}`, {
                 method: 'DELETE'
             });
 

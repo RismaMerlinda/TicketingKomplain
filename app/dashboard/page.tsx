@@ -187,6 +187,7 @@ import { useAuth } from "../context/AuthContext";
 import { getStoredLogs, formatRelativeTime } from "@/lib/activity";
 import { ROLES } from "@/lib/auth";
 import { getStoredTickets } from "@/lib/tickets";
+import { API_BASE_URL } from "@/lib/api-config";
 
 
 
@@ -297,7 +298,7 @@ function DashboardContent() {
     useEffect(() => {
         const loadProducts = async () => {
             try {
-                const response = await fetch('http://127.0.0.1:5900/api/products');
+                const response = await fetch(`${API_BASE_URL}/products`);
                 if (response.ok) {
                     const data = await response.json();
 

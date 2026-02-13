@@ -9,6 +9,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from "framer-motion";
+import { API_BASE_URL } from "@/lib/api-config";
 import {
     Download,
     FileSpreadsheet,
@@ -94,7 +95,7 @@ export default function ReportsPage() {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const res = await fetch('http://127.0.0.1:5900/api/products');
+                const res = await fetch(`${API_BASE_URL}/products`);
                 const contentType = res.headers.get("content-type");
                 if (res.ok && contentType && contentType.includes("application/json")) {
                     const data = await res.json();
@@ -115,7 +116,7 @@ export default function ReportsPage() {
 
             // 0. Fetch Users for Admin Name Mapping
             try {
-                const userRes = await fetch('http://127.0.0.1:5900/api/users', { cache: 'no-store' });
+                const userRes = await fetch(`${API_BASE_URL}/users`, { cache: 'no-store' });
                 if (userRes.ok) {
                     const users = await userRes.json();
                     if (Array.isArray(users)) {
@@ -133,7 +134,7 @@ export default function ReportsPage() {
 
             try {
                 // 1. Try Fetch from API
-                const res = await fetch('http://127.0.0.1:5900/api/tickets');
+                const res = await fetch(`${API_BASE_URL}/tickets`);
                 const contentType = res.headers.get("content-type");
                 if (res.ok && contentType && contentType.includes("application/json")) {
                     rawTickets = await res.json();
@@ -150,7 +151,7 @@ export default function ReportsPage() {
                 if (stored && stored.length > 0) {
                     console.log("📦 Migrating tickets to MongoDB...");
                     try {
-                        const syncRes = await fetch('http://127.0.0.1:5900/api/tickets/sync', {
+                        const syncRes = await fetch(`${API_BASE_URL}/tickets/sync`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(stored)
@@ -374,7 +375,7 @@ export default function ReportsPage() {
 
         try {
             const ticketId = selectedTicketDetail.mongoId || selectedTicketDetail.id;
-            const res = await fetch(`http://127.0.0.1:5900/api/tickets/${ticketId}`, {
+            const res = await fetch(`${API_BASE_URL}/tickets/${ticketId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1039,11 +1040,11 @@ export default function ReportsPage() {
                                         </td>
                                         <td className="px-8 py-5">
                                             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold capitalize border ${ticket.status === 'done' ? 'bg-green-50 text-green-600 border-green-100' :
-                                                    ticket.status === 'closed' ? 'bg-[#fdf8f6] text-[#854D0E] border-[#854D0E]/20' :
-                                                        ticket.status === 'overdue' ? 'bg-black text-white border-black' :
-                                                            ticket.status === 'in_progress' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                                                ticket.status === 'new' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                                    'bg-gray-100 text-gray-500 border-gray-200'
+                                                ticket.status === 'closed' ? 'bg-[#fdf8f6] text-[#854D0E] border-[#854D0E]/20' :
+                                                    ticket.status === 'overdue' ? 'bg-black text-white border-black' :
+                                                        ticket.status === 'in_progress' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                                            ticket.status === 'new' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                'bg-gray-100 text-gray-500 border-gray-200'
                                                 }`}>
                                                 {ticket.status === 'done' || ticket.status === 'closed' ? <CheckCircle2 size={12} /> :
                                                     ticket.status === 'overdue' ? <AlertCircle size={12} /> :
@@ -1163,11 +1164,11 @@ export default function ReportsPage() {
                                                             </td>
                                                             <td className="px-8 py-5">
                                                                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold capitalize border ${ticket.status === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                                        ticket.status === 'closed' ? 'bg-slate-100 text-slate-600 border-slate-200' :
-                                                                            ticket.status === 'overdue' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                                                ticket.status === 'in_progress' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                                                                                    ticket.status === 'new' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                                                        'bg-slate-50 text-slate-500 border-slate-200' // Pending
+                                                                    ticket.status === 'closed' ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                                                                        ticket.status === 'overdue' ? 'bg-red-50 text-red-600 border-red-100' :
+                                                                            ticket.status === 'in_progress' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                                                                ticket.status === 'new' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                                    'bg-slate-50 text-slate-500 border-slate-200' // Pending
                                                                     }`}>
                                                                     {ticket.status === 'done' || ticket.status === 'closed' ? <CheckCircle2 size={12} /> :
                                                                         ticket.status === 'overdue' ? <AlertCircle size={12} /> :
@@ -1273,11 +1274,11 @@ export default function ReportsPage() {
                                                 <div className="space-y-1.5">
                                                     <p className="text-[10px] uppercase font-black tracking-[0.1em] text-slate-400">Status</p>
                                                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${selectedTicketDetail.status === 'done' ? 'bg-green-50 text-green-600 border-green-100' :
-                                                            selectedTicketDetail.status === 'closed' ? 'bg-[#fdf8f6] text-[#854D0E] border-[#854D0E]/20' :
-                                                                selectedTicketDetail.status === 'overdue' ? 'bg-black text-white border-black' :
-                                                                    selectedTicketDetail.status === 'in_progress' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                                                        selectedTicketDetail.status === 'new' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                                            'bg-gray-100 text-gray-500 border-gray-200'
+                                                        selectedTicketDetail.status === 'closed' ? 'bg-[#fdf8f6] text-[#854D0E] border-[#854D0E]/20' :
+                                                            selectedTicketDetail.status === 'overdue' ? 'bg-black text-white border-black' :
+                                                                selectedTicketDetail.status === 'in_progress' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                                                    selectedTicketDetail.status === 'new' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                        'bg-gray-100 text-gray-500 border-gray-200'
                                                         }`}>
                                                         {selectedTicketDetail.status.replace('_', ' ')}
                                                     </span>

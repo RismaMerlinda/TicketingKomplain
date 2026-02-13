@@ -9,7 +9,9 @@ export interface Product {
     adminPassword: string;
 }
 
-const API_URL = 'http://127.0.0.1:5900/api/products';
+import { API_BASE_URL } from './api-config';
+
+const API_URL = `${API_BASE_URL}/products`;
 
 /**
  * Fetch all products from MongoDB via API

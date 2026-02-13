@@ -4,6 +4,7 @@ import Header from "@/app/components/Header";
 import { useState, useEffect } from "react";
 import { Package, Plus, Search, MoreHorizontal, ArrowRight, Settings, Users, Key, Mail, X, Save } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_BASE_URL } from "@/lib/api-config";
 import { useRouter } from "next/navigation";
 import { MOCK_PRODUCTS, ProductData } from "@/lib/data";
 import { ROLES } from "@/lib/auth";
@@ -151,8 +152,8 @@ export default function ProductsPage() {
         try {
             const method = isEditModalOpen ? 'PUT' : 'POST';
             const url = isEditModalOpen
-                ? `http://127.0.0.1:5900/api/products/${newProductId}`
-                : 'http://127.0.0.1:5900/api/products';
+                ? `${API_BASE_URL}/products/${newProductId}`
+                : `${API_BASE_URL}/products`;
 
             const res = await fetch(url, {
                 method,
@@ -196,7 +197,7 @@ export default function ProductsPage() {
         const productName = products[id]?.name || id;
 
         try {
-            const res = await fetch(`http://127.0.0.1:5900/api/products/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/products/${id}`, {
                 method: 'DELETE'
             });
 
