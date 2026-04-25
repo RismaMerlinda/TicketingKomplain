@@ -37,8 +37,6 @@ const DEFAULT_USERS = [
 ];
 
 // Login endpoint
-const fs = require('fs');
-const path = require('path');
 
 // Login endpoint
 exports.login = async (req, res) => {
@@ -81,9 +79,6 @@ exports.login = async (req, res) => {
                     if (!user) throw saveErr;
                 }
             } else {
-                // Log failed attempt (user not found)
-                const logMsg = `[${new Date().toISOString()}] FAILED - User not found or default password mismatch. Email: '${email}', Password: '${password}'\n`;
-                fs.appendFileSync(path.join(__dirname, '../login_debug.log'), logMsg);
 
                 return res.status(401).json({
                     success: false,
@@ -93,9 +88,6 @@ exports.login = async (req, res) => {
         } else {
             // Cek password (plain text comparison - in production use bcrypt)
             if (user.password !== password) {
-                // Log failed attempt (password mismatch)
-                const logMsg = `[${new Date().toISOString()}] FAILED - Password mismatch. Email: '${user.email}', DB Password: '${user.password}', Input Password: '${password}'\n`;
-                fs.appendFileSync(path.join(__dirname, '../login_debug.log'), logMsg);
 
                 return res.status(401).json({
                     success: false,
@@ -104,10 +96,6 @@ exports.login = async (req, res) => {
             }
         }
 
-        // Login berhasil
-        // Clear log on successful login to indicate success? Or just leave it.
-        const logMsg = `[${new Date().toISOString()}] SUCCESS - Login successful for ${user.email}\n`;
-        fs.appendFileSync(path.join(__dirname, '../login_debug.log'), logMsg);
 
         res.json({
             success: true,
